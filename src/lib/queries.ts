@@ -72,6 +72,7 @@ export type GoldFilter = {
   limit?: number;
   sort?: "occurred_at" | "grams" | "price_per_gram" | "total";
   direction?: "asc" | "desc";
+  account?: string;
 };
 export const goldQuery = (f: GoldFilter = {}) =>
   queryOptions({
@@ -83,16 +84,17 @@ export const goldQuery = (f: GoldFilter = {}) =>
           limit: f.limit ?? 25,
           sort: f.sort ?? "occurred_at",
           direction: f.direction ?? "desc",
+          ...(f.account ? { account: f.account } : {}),
         },
       }),
     staleTime: 300_000,
   });
 export const assetsQuery = () =>
   queryOptions({ queryKey: ["assets"], queryFn: () => getAssets(), staleTime: FRESH });
-export const receivablesQuery = (offset = 0, limit = 24) =>
+export const receivablesQuery = (offset = 0, limit = 24, account?: string) =>
   queryOptions({
-    queryKey: ["receivables", offset, limit],
-    queryFn: () => getReceivables({ data: { offset, limit } }),
+    queryKey: account ? ["receivables", offset, limit, account] : ["receivables", offset, limit],
+    queryFn: () => getReceivables({ data: { offset, limit, ...(account ? { account } : {}) } }),
   });
 /** `account` = Laporan/Rekap wallet filter (#62); omitted = all wallets (same key and request as before). */
 const withAccount = (account?: string) => (account ? { account } : {});
