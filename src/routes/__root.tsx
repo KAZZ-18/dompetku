@@ -21,6 +21,7 @@ import { DEFAULT_LANG, urlLangFor, type Lang } from "@/lib/lang";
 import { PrivacySync } from "@/lib/privacy-sync";
 import { BrandingSync, brandingQuery } from "@/components/app-logo";
 import { demoQuery } from "@/components/demo";
+import { Analytics } from "@vercel/analytics/react";
 
 function NotFoundComponent() {
   const { t } = useI18n();
@@ -165,6 +166,7 @@ function RootComponent() {
       <BrandingSync />
       <Outlet />
       <LazyToaster />
+      <Analytics />
     </LanguageProvider>
   );
 }
