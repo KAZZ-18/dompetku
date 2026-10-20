@@ -12,6 +12,7 @@ import { pageHead } from "@/lib/head";
 import { AppLogo, AppName, useTagline } from "@/components/app-logo";
 import { useDemoInfo } from "@/components/demo";
 import { FlaskConical, LogIn } from "lucide-react";
+import SignInWithGoogle from "@/components/auth/SignInWithGoogle";
 
 export const Route = createFileRoute("/login")({
   head: () => pageHead("Masuk", "Masuk ke Dompetku — pelacak keuangan pribadi."),
@@ -195,6 +196,12 @@ function LoginPage() {
             </Button>
           </form>
         )}
+        <div className="my-6 flex items-center gap-3">
+          <div className="flex-1 border-t border-gray-200" />
+          <span className="text-xs text-gray-400">atau</span>
+          <div className="flex-1 border-t border-gray-200" />
+        </div>
+        <SignInWithGoogle />
       </Card>
       <Link
         to="/"

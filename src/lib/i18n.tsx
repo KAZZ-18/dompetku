@@ -110,6 +110,7 @@ const DICT: Record<string, string> = {
   menaik: "ascending",
   menurun: "descending",
   Masuk: "Sign in",
+  "Masuk dengan Google": "Sign in with Google",
   "Cari deskripsi / merchant…": "Search description / merchant…",
   "Cari deskripsi / merchant / item…": "Search description / merchant / item…",
   "Memuat…": "Loading…",
