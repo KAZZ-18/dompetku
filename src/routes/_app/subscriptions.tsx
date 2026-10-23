@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Plus } from "lucide-react";
@@ -10,6 +10,7 @@ import { CURRENCY_OPTIONS } from "@/components/entity-dialog";
 import { Empty, RowActions, useCrudDialog } from "@/components/crud-page";
 import { Pagination } from "@/components/pagination";
 import { useClientPage } from "@/hooks/use-client-page";
+import { WalletFilter } from "@/components/wallet-filter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,10 +22,13 @@ import { money } from "@/lib/format";
 import { usePrivacy } from "@/lib/privacy";
 import { useI18n } from "@/lib/i18n";
 import { pageHead } from "@/lib/head";
+import { resolveReportAccount, validateReportSearch } from "@/lib/report-filter";
+import { subMonthly } from "@/lib/subscriptions";
 import type { Account, Category, Subscription } from "@/lib/schemas";
 
 export const Route = createFileRoute("/_app/subscriptions")({
   head: () => pageHead("Langganan", "Kelola langganan bulanan dan tahunan dalam IDR maupun USD."),
+  validateSearch: validateReportSearch,
   loader: ({ context }) =>
     Promise.all([
       context.queryClient.ensureQueryData(rowsQuery("subscriptions")),
@@ -43,23 +47,32 @@ function SubsPage() {
   usePrivacy();
   const { t, lang } = useI18n();
   const locale = lang === "en" ? "en-US" : "id-ID";
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const subs = useSuspenseQuery(rowsQuery("subscriptions")).data as Subscription[];
   const { usdIdr } = useSuspenseQuery(fxQuery()).data;
   const accounts = (useQuery(rowsQuery("accounts")).data ?? []) as Account[];
   const categories = (useQuery(rowsQuery("categories")).data ?? []) as Category[];
+  const setAccount = (a: string | undefined) =>
+    void navigate({ search: a ? { account: a } : {}, replace: true });
+  const account = resolveReportAccount(search.account, accounts);
+  const filtered = subs.filter((s) => !account || s.account_id === account);
   const pay = useServerFn(paySubscription);
   const qc = useQueryClient();
   const crud = useCrudDialog("subscriptions", {
     currency: "IDR",
     cycle: "monthly",
+    interval: 1,
     next_due: todayStr(),
     active: true,
   });
   const toIdr = (s: Subscription) =>
     withTax(Number(s.amount), s.tax_percent) * (s.currency === "USD" ? usdIdr : 1);
-  const page = useClientPage(subs, PAGE_SIZE);
-  const active = subs.filter((s) => s.active);
-  const monthly = active.reduce((a, s) => a + (s.cycle === "yearly" ? toIdr(s) / 12 : toIdr(s)), 0);
+  const page = useClientPage(filtered, PAGE_SIZE, account);
+  const active = filtered.filter((s) => s.active);
+  const cycleUnit = { monthly: "bulan", yearly: "tahun" } as const;
+  const cycleLabel = { monthly: "Bulanan", yearly: "Tahunan" } as const;
+  const monthly = active.reduce((a, s) => a + subMonthly(toIdr(s), s.cycle, s.interval ?? 1), 0);
   const today = todayStr();
   const accName = (id: string | null | undefined) => accounts.find((a) => a.id === id)?.name;
 
@@ -84,6 +97,9 @@ function SubsPage() {
           </Button>
         }
       />
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <WalletFilter value={account} accounts={accounts} onChange={setAccount} />
+      </div>
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
         <Card className="min-w-0 bg-ink p-5 text-ink-foreground">
           <p className="text-xs uppercase tracking-wider text-ink-muted">
@@ -100,7 +116,7 @@ function SubsPage() {
           </p>
         </Card>
       </div>
-      {subs.length === 0 ? (
+      {filtered.length === 0 ? (
         <Empty text={t("Belum ada langganan. Tambahkan Netflix, Spotify, iCloud, ChatGPT…")} />
       ) : (
         <Card className="divide-y">
@@ -115,7 +131,9 @@ function SubsPage() {
                   <p className="min-w-0 truncate font-medium">{s.name}</p>
                   <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
                     <Badge variant="outline">
-                      {s.cycle === "yearly" ? t("Tahunan") : t("Bulanan")}
+                      {s.interval && s.interval > 1
+                        ? `${t("Tiap")} ${s.interval} ${t(cycleUnit[s.cycle])}`
+                        : t(cycleLabel[s.cycle])}
                     </Badge>
                     {Number(s.tax_percent) > 0 ? (
                       <Badge variant="secondary" className="num">
@@ -193,7 +211,7 @@ function SubsPage() {
         visible={page.visible.length}
         onChange={page.setOffset}
       />
-      {crud.dialog(t("langganan"), [
+      {crud.dialog(t("langganan"), (v) => [
         {
           name: "name",
           label: t("Nama layanan"),
@@ -229,6 +247,13 @@ function SubsPage() {
             { value: "monthly", label: t("Bulanan") },
             { value: "yearly", label: t("Tahunan") },
           ],
+        },
+        {
+          name: "interval",
+          label: v["cycle"] === "yearly" ? t("Setiap (tahun)") : t("Setiap (bulan)"),
+          type: "number",
+          half: true,
+          placeholder: "1",
         },
         { name: "next_due", label: t("Tagihan berikutnya"), type: "date", half: true },
         {

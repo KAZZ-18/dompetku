@@ -13,7 +13,7 @@ so you can follow along even if you are new to web development.
 - [Tech stack](#tech-stack)
 - [System diagram](#system-diagram)
 - [Directory structure](#directory-structure)
-- [Database schema sections (v1–v19)](#database-schema-sections-v1v19)
+- [Database schema sections (v1–v20)](#database-schema-sections-v1v20)
 - [Key flows](#key-flows)
 - [Conventions and contributor rules](#conventions-and-contributor-rules)
 - [Testing and CI](#testing-and-ci)
@@ -54,7 +54,7 @@ Versions are taken from `package.json` (`^` means "this version or a compatible 
 | File storage       | Supabase Storage                                                           | —                                             | Private `receipts` bucket for receipt photos, viewed through short-lived signed URLs.                                                                    |
 | Hosting            | [Vercel](https://vercel.com) (region `sin1`, see `vercel.json`) or Lovable | —                                             | Serverless functions; the bot endpoint gets a 60 s limit for OCR (see `vite.config.ts`).                                                                 |
 | Tests              | [Vitest](https://vitest.dev) + Testing Library + jsdom                     | Vitest ^4.1                                   | Unit tests for all pure logic plus a few component tests.                                                                                                |
-| Lint & format      | ESLint 9 + typescript-eslint, Prettier 3                                   | —                                             | Consistent code style; `npm run lint` must pass in CI.                                                                                                   |
+| Lint & format      | ESLint 9 + typescript-eslint, Prettier 3                                   | —                                             | Consistent code style; `bun run lint` must pass in CI.                                                                                                   |
 | CI                 | GitHub Actions (`.github/workflows/ci.yml`)                                | —                                             | Runs lint, typecheck, test and build on every pull request and push to `main`.                                                                           |
 | Automation         | [n8n](https://n8n.io)                                                      | any recent                                    | Receives Telegram updates and runs schedules (reminders, reports, weekly backup) by calling `/api/public/n8n/*`.                                         |
 | Chat bot           | Telegram Bot API                                                           | —                                             | Record transactions by chat or receipt photo, with inline buttons.                                                                                       |
@@ -128,7 +128,7 @@ collapsed. Lovable planning drafts in `.lovable/` are omitted.
 │   ├── icons/                     # PWA icons (collapsed)
 │   ├── manifest.webmanifest       # PWA manifest (no service worker)
 │   └── (robots.txt and sitemap.xml are server routes in src/routes)
-├── supabase/schema.sql            # Full database schema, sections v1–v19, safe to re-run
+├── supabase/schema.sql            # Full database schema, sections v1–v20, safe to re-run
 ├── src/
 │   ├── server.ts                  # Server entry wrapper: catches SSR errors → logError + error page
 │   ├── start.ts                   # Global request middleware: security headers, error page, CSRF
@@ -177,7 +177,7 @@ File-name suffixes tell you where code may run:
 | File                                                                          | Purpose                                                                                                                |
 | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `db.server.ts`                                                                | The single Supabase client (service-role key), typed with `database.types.ts`.                                         |
-| `database.types.ts`                                                           | Generated DB types (`npm run gen:types`); optional columns/tables added by hand.                                       |
+| `database.types.ts`                                                           | Generated DB types (`bun run gen:types`); optional columns/tables added by hand.                                       |
 | `session.server.ts`, `auth.functions.ts`, `auth-middleware.ts`                | Credential check, HMAC-signed cookie, login/logout/2FA server functions, `requireAuth`.                                |
 | `totp.ts` / `totp.server.ts`                                                  | Pure TOTP (RFC 6238) helpers / verification against `APP_TOTP_SECRET`.                                                 |
 | `password.ts` / `password.server.ts`, `session.ts`                            | Pure scrypt hash format + password policy / hashing; pure cookie payload + session-version check.                      |
@@ -208,7 +208,7 @@ File-name suffixes tell you where code may run:
 | `i18n.tsx`                                                                    | `LanguageProvider` / `useI18n`, ID→EN dictionary.                                                                      |
 | `dates.ts`, `head.ts`, `utils.ts`                                             | Date helpers, page `<head>` helper, `cn()` class merge.                                                                |
 
-## Database schema sections (v1–v19)
+## Database schema sections (v1–v20)
 
 `supabase/schema.sql` is one file, organised in sections that are **safe to re-run** (`if not
 exists` everywhere). A fresh install runs the whole file once. Existing installs run any newer
@@ -236,6 +236,7 @@ the section is run.
 | v17     | `app_users` (username, display_name, address, avatar data URL, password_hash, role, is_active, session_version): profile + in-app password change; backups carry profile fields only.                                           |
 | v18     | Multi-user: `app_users.must_change_password`, `account_permissions` (user_id, account_id, level `view`/`manage`, PK both, cascade), optional `activity_log.actor`.                                                              |
 | v19     | Kantong: `pockets` (account_id cascade, name unique per wallet, allocated, min_balance, period `monthly`/`none`), optional `transactions.pocket_id` (on delete set null), `pocket_alerts` (pocket, month, level `low`/`empty`). |
+| v20     | Subscription flexible interval: `subscriptions."interval"` (default 1, check ≥ 1) enables custom intervals like every 3 months, 6 months, 3 years.                                                                              |
 
 ## Key flows
 
@@ -375,6 +376,7 @@ sequenceDiagram
 - Logic lives in the web app (`bot.ts` pure, `bot.server.ts` DB). n8n only relays
   `{method, text, reply_markup}` to the Telegram Bot API.
 - Double taps and retries are harmless: the unique `external_id` makes the save idempotent.
+- `/bayar` (`botPay`) and `/tarik` (`cashWithdraw`) bypass `bot_drafts` and write immediately.
 - AI results are snapped to existing categories/accounts (`matchCategory`); the bot never
   creates categories. `BOT_TEXT_AI` (`auto` / `always` / `never`) and `AI_MODEL_TEXT` control token
   spend; chats without an amount or over 300 characters skip AI, and `BOT_AI_DAILY_LIMIT` caps
@@ -407,6 +409,9 @@ next time it matters:
   transactions.
 - Both are **idempotent**: fees are deduplicated by a notes marker from `fees.ts`; recurring items
   by a notes marker plus `external_id`. Recurring application never throws.
+- One run posts at most the latest `RECURRING_CATCHUP_CAP` (12) missed occurrences per schedule;
+  older ones are skipped. Resuming a paused schedule (`resumeNextDue`) jumps to the first
+  occurrence on/after today, so nothing missed while paused is posted.
 - Reminders (`/reminders`, `/api/public/n8n/reminders`, `-email`, `-send-email`) list upcoming
   subscription and installment bills. n8n workflow 02 calls them on a schedule; direct email uses
   Resend when `RESEND_API_KEY` / `EMAIL_FROM` / `EMAIL_TO` are set.
@@ -527,7 +532,7 @@ worker** on purpose: it keeps Lovable previews and deployments free of stale cac
 - [ ] Add a new section `-- ===== vN: … =====` to `supabase/schema.sql` (idempotent, RLS enabled,
       grants to `service_role` only).
 - [ ] Add the table/columns to `src/lib/database.types.ts` (mark optional if the section may not
-      have been run), or regenerate with `npm run gen:types`.
+      have been run), or regenerate with `bun run gen:types`.
 - [ ] Read through `isMissingTable()` / `isMissingFunction()` so old databases keep working.
 - [ ] Add the table to `RESTORE_TABLES` in `backup.ts` in foreign-key order (and conflict keys).
 - [ ] Add the table to the `AFFECTS` map in `queries.ts`.
@@ -539,11 +544,11 @@ worker** on purpose: it keeps Lovable previews and deployments free of stale cac
 ## Testing and CI
 
 ```bash
-npm run lint        # ESLint
-npm run typecheck   # tsc --noEmit
-npm test            # Vitest, once
-npm run test:watch  # Vitest in watch mode
-npm run build       # production build
+bun run lint        # ESLint
+bun run typecheck   # tsc --noEmit
+bun run test            # Vitest, once
+bun run test:watch  # Vitest in watch mode
+bun run build       # production build
 ```
 
 - Tests live in `src/test` and mostly cover pure modules (bot parsing, fees, budgets, recurring,

@@ -43,7 +43,9 @@ Inggris — lihat [README.md](README.md) dan folder [docs/](docs).
 - **Pemasukan, pengeluaran dan transfer** antar rekening (bank, e-wallet, tunai, dan lainnya) dengan
   saldo yang selalu terkini; nominal **IDR dan USD** dengan kurs harian otomatis.
 - **Utang dan cicilan** (paylater, pinjaman), **langganan** bulanan/tahunan, **biaya admin**
-  rekening, dan **transaksi berulang** (gaji, sewa, transfer rutin) yang tercatat otomatis.
+  rekening, dan **transaksi berulang** (gaji, sewa, transfer rutin) yang tercatat otomatis. Jadwal
+  yang lama terlewat hanya mencatat 12 kejadian terbaru; jadwal yang dilanjutkan setelah dijeda
+  melewati kejadian selama jeda.
 - **Split transaksi**, **hingga 5 foto struk** per transaksi (tersimpan privat) dan pencarian
   berdasarkan nama item di struk; **impor CSV** dengan pratinjau dan deteksi duplikat.
 - **Anggaran per kategori** dengan **rollover** dan **peringatan 80% dan 100%** di web dan bot.
@@ -53,7 +55,9 @@ Inggris — lihat [README.md](README.md) dan folder [docs/](docs).
   sebagian, dan **kekayaan bersih** yang menghitung saldo, emas dan piutang.
 - **Multi-user (keluarga)** dengan akses per dompet (lihat atau kelola).
 - **Bot Telegram**: catat lewat chat (`kopi 25rb`, `gaji masuk 8jt ke BCA`) atau kirim foto struk;
-  setiap entri tampil sebagai **pratinjau dengan tombol** sebelum disimpan.
+  entri dari chat dan foto struk tampil sebagai **pratinjau dengan tombol** sebelum disimpan,
+  sedangkan `/bayar <nama>` (bayar langganan/cicilan) dan `/tarik <nominal> dari <akun>` (tarik
+  tunai) langsung dicatat tanpa pratinjau.
 - **OCR struk** di web dan bot memakai penyedia AI apa pun yang kompatibel dengan OpenAI (mis.
   Google Gemini atau OpenAI).
 - **Pengingat tagihan** lewat Telegram atau email plus laporan harian, mingguan dan bulanan lewat
@@ -122,14 +126,14 @@ Panduan lengkap langkah demi langkah ada di **[docs/SELF-HOSTING.md](docs/SELF-H
 
 Kontribusi sangat diterima, mulai dari perbaikan typo dan terjemahan sampai fitur baru. Baca dulu
 [CONTRIBUTING.md](CONTRIBUTING.md) dan [Code of Conduct](CODE_OF_CONDUCT.md). Sebelum membuka pull
-request, pastikan `npm run lint`, `npm run typecheck`, `npm test` dan `npm run build` lolos.
+request, pastikan `bun run lint`, `bun run typecheck`, `bun run test` dan `bun run build` lolos (npm juga bisa: `npm install` / `npm run <script>`).
 Masalah keamanan dilaporkan secara privat lewat [SECURITY.md](SECURITY.md), bukan lewat issue
 publik.
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ilramdhan/dompetku)
 
 Ingin langsung mulai tanpa setup? Buka repo di GitHub Codespaces: dev container sudah memasang
-dependensi dan Docker, jadi `npm run db:up`, `npm run dev` dan `npm test` langsung bisa dipakai.
+dependensi dan Docker, jadi `bun run db:up`, `bun run dev` dan `bun run test` langsung bisa dipakai.
 
 ## Dukungan
 

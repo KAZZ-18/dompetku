@@ -109,7 +109,7 @@ Try it without installing anything: **<https://demo.dompetku.ilramdhan.dev>**
 ## Screenshots
 
 All screenshots use the fictional [demo data](docs/DEMO-DATA.md) and follow your GitHub theme (light
-or dark). Regenerate them with `npm run screenshots` (see [Regenerating screenshots](docs/DEMO-DATA.md#regenerating-screenshots)).
+or dark). Regenerate them with `bun run screenshots` (see [Regenerating screenshots](docs/DEMO-DATA.md#regenerating-screenshots)).
 
 <p align="center">
   <picture><source media="(prefers-color-scheme: dark)" srcset="public/screenshots/dashboard-dark.png"><img src="public/screenshots/dashboard.png" alt="Dompetku dashboard — personal finance overview with balances, net worth, cash flow and spending per category"></picture>
@@ -164,7 +164,9 @@ or dark). Regenerate them with `npm run screenshots` (see [Regenerating screensh
 - **Debts and installments** (paylater, loans) with payment tracking.
 - **Subscriptions**, monthly or yearly, in IDR or USD, with optional tax.
 - **Account fees**: transfer, top-up and monthly admin fees recorded as separate expenses.
-- **Recurring transactions** (salary, rent, regular transfers) posted automatically when due.
+- **Recurring transactions** (salary, rent, regular transfers) posted automatically when due. A
+  long-missed schedule posts only its latest 12 occurrences; resuming a paused one skips what was
+  missed while paused.
 - **Split transactions**: split one receipt across several categories.
 - **Up to 5 receipt photos** per transaction, stored privately, plus search by receipt item name.
 - **CSV import** with a preview, duplicate detection and optional creation of new categories or
@@ -191,8 +193,11 @@ or dark). Regenerate them with `npm run screenshots` (see [Regenerating screensh
 ### Automation
 
 - **Telegram bot**: record transactions by chat (`kopi 25rb`, `gaji masuk 8jt ke BCA`) or by sending
-  a receipt photo. Every entry is shown as a **preview with buttons** before it is saved (change the
-  category, account, type or description — even for a receipt); `/undo` removes the last one. Slash commands give balances, reports, bills, budgets and more.
+  a receipt photo. Chat and receipt entries are shown as a **preview with buttons** before they are
+  saved (change the category, account, type or description — even for a receipt); `/undo` removes
+  the last one. `/bayar <name>` (subscription or installment payment) and
+  `/tarik <amount> dari <account>` (cash withdrawal) are recorded immediately, without a preview.
+  Slash commands give balances, reports, bills, budgets and more.
 - **Receipt OCR** in the web app and the bot, using any OpenAI-compatible AI provider (for example
   Google Gemini or OpenAI).
 - **Reminders** for upcoming bills via Telegram or email, plus daily, weekly and monthly reports,
@@ -308,28 +313,28 @@ public/          PWA manifest, icons and self-hosted fonts
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ilramdhan/dompetku)
 
 Prefer zero setup? Open the repo in GitHub Codespaces: the dev container installs dependencies
-and includes Docker, so `npm run db:up`, `npm run dev` and `npm test` work right away.
+and includes Docker, so `bun run db:up`, `bun run dev` and `bun run test` work right away.
 
-Locally, you need [Node.js](https://nodejs.org) 22 or newer (or [Bun](https://bun.sh), which CI uses) and
-a Supabase project with the schema applied.
+Locally, you need [Node.js](https://nodejs.org) 22 or newer, [Bun](https://bun.sh) (the primary package manager, used by CI) and
+a Supabase project with the schema applied. npm also works (`npm install` / `npm run <script>`).
 
 ```bash
 git clone https://github.com/<your-username>/dompetku.git
 cd dompetku
-npm install
+bun install
 cp .env.example .env    # then fill in at least the five required variables
-npm run dev             # open the URL printed in the terminal
+bun run dev             # open the URL printed in the terminal
 ```
 
 | Command             | What it does                                                                 |
 | ------------------- | ---------------------------------------------------------------------------- |
-| `npm run dev`       | Start the development server                                                 |
-| `npm run build`     | Production build                                                             |
-| `npm run lint`      | ESLint                                                                       |
-| `npm run typecheck` | TypeScript check                                                             |
-| `npm test`          | Run all tests once (`npm run test:watch` to keep watching)                   |
-| `npm run format`    | Format the code with Prettier                                                |
-| `npm run gen:types` | Regenerate database types (needs `SUPABASE_PROJECT_ID` and the Supabase CLI) |
+| `bun run dev`       | Start the development server                                                 |
+| `bun run build`     | Production build                                                             |
+| `bun run lint`      | ESLint                                                                       |
+| `bun run typecheck` | TypeScript check                                                             |
+| `bun run test`      | Run all tests once (`bun run test:watch` to keep watching)                   |
+| `bun run format`    | Format the code with Prettier                                                |
+| `bun run gen:types` | Regenerate database types (needs `SUPABASE_PROJECT_ID` and the Supabase CLI) |
 
 More detail is in the [local development section of the self-hosting guide](docs/SELF-HOSTING.md).
 
@@ -337,8 +342,8 @@ More detail is in the [local development section of the self-hosting guide](docs
 
 Contributions are welcome, from typo fixes and translations to new features. Please read
 [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md) first. Before
-opening a pull request, make sure `npm run lint`, `npm run typecheck`, `npm test` and
-`npm run build` all pass; CI runs the same checks. Contributor rules (schema sections, i18n,
+opening a pull request, make sure `bun run lint`, `bun run typecheck`, `bun run test` and
+`bun run build` all pass; CI runs the same checks. Contributor rules (schema sections, i18n,
 privacy mode and more) are summarised in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#conventions-and-contributor-rules)
 and listed in full in [AGENTS.md](AGENTS.md). For user-facing changes, also follow the
 [accessibility expectations](ACCESSIBILITY.md#contributor-expectations).

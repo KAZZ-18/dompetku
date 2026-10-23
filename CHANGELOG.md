@@ -9,6 +9,32 @@ Starting with v1.0.0, versioned entries (`## [x.y.z]`) are generated automatical
 > [!NOTE]
 > When an entry mentions a **schema section** (`v2`…`v13`), self-hosters must run that section of [`supabase/schema.sql`](supabase/schema.sql) on their Supabase project. Every section is safe to run more than once, and the app keeps working (with the feature disabled) until you do.
 
+## [1.10.1](https://github.com/ilramdhan/dompetku/compare/v1.10.0...v1.10.1) (2026-10-14)
+
+
+### Documentation
+
+* clarify bot commands that skip the preview and recurring catch-up limits ([#89](https://github.com/ilramdhan/dompetku/issues/89)) ([f31e787](https://github.com/ilramdhan/dompetku/commit/f31e7878196f489a38934d045893ef9277a262c8))
+
+## [1.10.0](https://github.com/ilramdhan/dompetku/compare/v1.9.0...v1.10.0) (2026-10-14)
+
+
+### Features
+
+* **subscriptions:** support flexible billing intervals ([#85](https://github.com/ilramdhan/dompetku/issues/85)) ([b9f3c2a](https://github.com/ilramdhan/dompetku/commit/b9f3c2a048aced8400185f6219e265fac794b1f5))
+
+## [1.9.0](https://github.com/ilramdhan/dompetku/compare/v1.8.0...v1.9.0) (2026-10-13)
+
+
+### Features
+
+* wallet filter for entity pages and server-scoped gold/receivables ([#74](https://github.com/ilramdhan/dompetku/issues/74)) ([#77](https://github.com/ilramdhan/dompetku/issues/77)) ([d3add99](https://github.com/ilramdhan/dompetku/commit/d3add999e8a450a5eb2ca92643ab6c808fe02f55))
+
+
+### Documentation
+
+* document bun as the primary package manager ([#78](https://github.com/ilramdhan/dompetku/issues/78)) ([dbd9837](https://github.com/ilramdhan/dompetku/commit/dbd9837bdf82bc9becb50f87a5b1a23884a22c4e))
+
 ## [1.8.0](https://github.com/ilramdhan/dompetku/compare/v1.7.2...v1.8.0) (2026-10-11)
 
 
