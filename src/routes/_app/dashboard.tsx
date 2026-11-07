@@ -8,6 +8,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  PiggyBank,
+  Target,
+  CreditCard,
 } from "lucide-react";
 import { PageHeader } from "@/components/app-shell";
 import { RouteError } from "@/components/route-error";
@@ -37,6 +43,9 @@ import { IncomeRatioCard } from "@/components/income-ratio-card";
 import { PocketWarnings } from "@/components/pocket-warnings";
 import { useAccess } from "@/hooks/use-access";
 import { walletLabel } from "@/lib/permissions";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const Route = createFileRoute("/_app/dashboard")({
@@ -59,7 +68,6 @@ function Dashboard() {
   const [month, setMonth] = useState(currentMonth());
   const { data: d } = useQuery({ ...dashboardQuery(month), placeholderData: (p) => p });
   const { data: nw } = useQuery(netWorthQuery(12, month));
-  // v18 members: only their permitted wallets; debts/goals/budgets/reminders/assets are admin-only.
   const { isAdmin, access } = useAccess();
   const canWrite = isAdmin || Object.values(access.grants).includes("manage");
   const [dlg, setDlg] = useState<{ open: boolean; draft: TxDraft }>({
@@ -69,6 +77,16 @@ function Dashboard() {
   if (!d) return <DashboardSkeleton />;
   const prev = previousOf<{ income: number; expense: number }>(d.trend);
   const rate = savingsRate(d.net, d.income);
+
+  // KPI calculations for the four prominent cards
+  const netIncome = d.net; // income - expense
+  const totalExpenses = d.expense;
+  const savingsRatePct = rate !== null ? rate * 100 : 0;
+  const totalInvestments = isAdmin
+    ? d.balances
+        .filter((b: any) => b.type === "investment")
+        .reduce((a: number, b: any) => a + b.balance_idr, 0)
+    : 0;
 
   return (
     <>
@@ -117,224 +135,292 @@ function Dashboard() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="flex min-w-0 flex-col bg-ink p-5 text-ink-foreground">
-          <p className="text-xs uppercase tracking-wider text-ink-muted">{t("Total saldo")}</p>
-          <p className="num mt-2 break-words text-2xl font-semibold">{money(d.totalBalanceIdr)}</p>
-          <p className="mt-auto pt-3 text-xs text-ink-muted">
-            {d.balances.length} {t("akun aktif")}
-          </p>
-        </Card>
-        <Stat
-          label={t("Pemasukan")}
-          value={d.income}
-          tone="income"
-          icon={<ArrowDownRight className="size-4" />}
-          footer={<MonthDelta current={d.income} previous={prev?.income} goodWhenUp />}
+      {/* Four prominent KPI cards - matching reference design */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+        <StatCard
+          label={t("Pendapatan Bersih")}
+          value={money(netIncome)}
+          icon={<TrendingUp className="size-4" />}
+          tone={netIncome >= 0 ? "income" : "expense"}
+          trend={
+            prev?.income !== undefined
+              ? { current: d.income, previous: prev.income, goodWhenUp: true }
+              : null
+          }
         />
-        <Stat
-          label={t("Pengeluaran")}
-          value={d.expense}
+        <StatCard
+          label={t("Total Pengeluaran")}
+          value={money(totalExpenses)}
+          icon={<TrendingDown className="size-4" />}
           tone="expense"
-          icon={<ArrowUpRight className="size-4" />}
-          footer={<MonthDelta current={d.expense} previous={prev?.expense} goodWhenUp={false} />}
+          trend={
+            prev?.expense !== undefined
+              ? { current: d.expense, previous: prev.expense, goodWhenUp: false }
+              : null
+          }
         />
-        <Card className="flex min-w-0 flex-col p-5">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">
-            {t("Selisih bulan ini")}
-          </p>
-          <p
-            className={`num mt-2 break-words text-2xl font-semibold ${d.net >= 0 ? "text-income" : "text-expense"}`}
-          >
-            {money(d.net)}
-          </p>
-          <div className="mt-auto space-y-0.5 pt-3 text-xs text-muted-foreground">
-            {rate !== null ? (
-              <p>
-                <span className={`num font-medium ${rate >= 0 ? "text-income" : "text-expense"}`}>
-                  {formatPercent(rate)}
-                </span>{" "}
-                {t("dari pemasukan")}
-              </p>
-            ) : null}
-            <p className="break-words">
-              {isAdmin ? (
-                <>
-                  {t("Hutang")} <span className="num">{money(d.debtOutstandingIdr)}</span> ·{" "}
-                  {t("Langganan")} <span className="num">{money(d.subsMonthlyIdr)}</span>/{t("bln")}
-                </>
-              ) : null}
-              {d.feesIdr > 0 ? (
-                <>
-                  {isAdmin ? " · " : null}
-                  {t("Admin")} <span className="num">{money(d.feesIdr)}</span>
-                </>
-              ) : null}
-            </p>
-          </div>
-        </Card>
+        <StatCard
+          label={t("Rasio Tabungan")}
+          value={`${savingsRatePct.toFixed(1)}%`}
+          icon={<PiggyBank className="size-4" />}
+          tone={savingsRatePct >= 20 ? "income" : savingsRatePct >= 0 ? "warning" : "expense"}
+        />
+        <StatCard
+          label={isAdmin ? t("Investasi") : t("Saldo Total")}
+          value={money(isAdmin ? totalInvestments : d.totalBalanceIdr)}
+          icon={<Wallet className="size-4" />}
+          tone="primary"
+        />
       </div>
 
-      <IncomeRatioCard
-        className="mt-4"
-        income={d.income}
-        expense={d.expense}
-        categories={d.byCategory}
-      />
+      {/* Main content grid */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Left column: Charts */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Cashflow Chart */}
+          <Card className="p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{t("Arus kas 6 bulan")}</h2>
+            </div>
+            <div className="h-64 short:h-48">
+              <CashflowAreaChart
+                data={d.trend.map((t: any) => ({ ...t, label: shortMonth(t.month, locale) }))}
+                incomeLabel={t("Pemasukan")}
+                expenseLabel={t("Pengeluaran")}
+              />
+            </div>
+          </Card>
 
-      {month === currentMonth() ? <PocketWarnings month={month} /> : null}
-
-      {isAdmin ? <AssetsOverview /> : null}
-
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="min-w-0 p-5 lg:col-span-2">
-          <h2 className="mb-4 text-lg font-semibold">{t("Arus kas 6 bulan")}</h2>
-          <div className="h-64 short:h-48">
-            <CashflowAreaChart
-              data={d.trend.map((t: any) => ({ ...t, label: shortMonth(t.month, locale) }))}
-              incomeLabel={t("Pemasukan")}
-              expenseLabel={t("Pengeluaran")}
-            />
-          </div>
-        </Card>
-        <Card className="min-w-0 p-5">
-          <h2 className="mb-2 text-lg font-semibold">{t("Pengeluaran per kategori")}</h2>
-          {d.byCategory.length ? (
-            <>
-              <div className="h-40">
-                <DonutChart
-                  data={d.byCategory.map((c: any, i: number) => ({
-                    name: c.name,
-                    value: c.value,
-                    color: c.color ?? PIE[i % PIE.length],
+          {/* Category trend chart */}
+          {d.categoryTrend?.categories?.length ? (
+            <Card className="p-5">
+              <h2 className="mb-4 text-lg font-semibold">
+                {t("Tren pengeluaran per kategori (6 bulan)")}
+              </h2>
+              <div className="h-64 short:h-48">
+                <StackedAreaChart
+                  data={d.categoryTrend.rows.map((r: any) => ({
+                    ...r,
+                    label: shortMonth(r.month, locale),
                   }))}
-                  innerRadius={42}
-                  outerRadius={70}
+                  keys={d.categoryTrend.categories}
                 />
               </div>
-              <ul className="mt-2 space-y-1.5 text-sm">
-                {d.byCategory.slice(0, 5).map((c: any, i: number) => (
-                  <li key={i} className="flex min-w-0 items-center justify-between gap-2">
-                    <span className="flex min-w-0 items-center gap-2 truncate">
-                      <span
-                        className="size-2.5 shrink-0 rounded-full"
-                        style={{ background: c.color ?? PIE[i % PIE.length] }}
-                      />
-                      {c.name}
-                    </span>
-                    <span className="num shrink-0 text-muted-foreground">{money(c.value)}</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <Empty text={t("Belum ada pengeluaran bulan ini.")} />
-          )}
-        </Card>
-      </div>
+            </Card>
+          ) : null}
 
-      {d.categoryTrend?.categories?.length ? (
-        <Card className="mt-4 min-w-0 p-5">
-          <h2 className="mb-4 text-lg font-semibold">
-            {t("Tren pengeluaran per kategori (6 bulan)")}
-          </h2>
-          <div className="h-64 short:h-48">
-            <StackedAreaChart
-              data={d.categoryTrend.rows.map((r: any) => ({
-                ...r,
-                label: shortMonth(r.month, locale),
-              }))}
-              keys={d.categoryTrend.categories}
-            />
-          </div>
-        </Card>
-      ) : null}
-
-      {nw?.length ? (
-        <Card className="mt-4 min-w-0 p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold">
-              {isAdmin ? t("Kekayaan bersih (12 bulan)") : t("Saldo dompet (12 bulan)")}
-            </h2>
-            <div className="min-w-0 text-right">
-              <p className="num break-words text-lg font-semibold">
-                {money(nw[nw.length - 1]!.netWorth)}
-              </p>
-              {nw[nw.length - 1]!.gold > 0 ? (
-                <p className="num text-xs text-muted-foreground">
-                  {t("termasuk emas")} {money(nw[nw.length - 1]!.gold)}
-                </p>
-              ) : null}
+          {/* Recent Transactions Table */}
+          <Card className="p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{t("Transaksi terbaru")}</h2>
+              <Link to="/transactions" className="text-xs text-primary hover:underline">
+                {t("Semua")}
+              </Link>
             </div>
-          </div>
-          <div className="h-56 short:h-44">
-            <NetWorthChart
-              data={nw.map((r) => ({ ...r, label: shortMonth(r.month, locale) }))}
-              label={isAdmin ? t("Kekayaan bersih (12 bulan)") : t("Saldo dompet (12 bulan)")}
-            />
-          </div>
-        </Card>
-      ) : null}
+            <ScrollArea className="h-[320px]">
+              {d.recent.length ? (
+                <table className="w-full text-sm" role="table">
+                  <thead>
+                    <tr className="border-b border-muted-foreground/20 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <th className="pb-3 pr-4">{t("Transaksi")}</th>
+                      <th className="pb-3 pr-4 text-center">{t("Kategori")}</th>
+                      <th className="pb-3 pr-4 text-center">{t("Akun")}</th>
+                      <th className="pb-3 pr-4 text-right">{t("Jumlah")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-muted-foreground/10">
+                    {d.recent.map((tx: any) => (
+                      <tr key={tx.id} className="hover:bg-muted/50 transition-colors">
+                        <td className="py-3 pr-4">
+                          <p className="font-medium truncate max-w-[200px]">
+                            {tx.description || tx.merchant || tx.category?.name || "Transaksi"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {dateLabel(tx.occurred_at, locale)}
+                          </p>
+                        </td>
+                        <td className="py-3 pr-4 text-center">
+                          {tx.category ? (
+                            <Badge variant="outline" className="gap-1.5">
+                              <span
+                                className="size-2 rounded-full"
+                                style={{ background: tx.category.color }}
+                              />
+                              {tx.category.name}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4 text-center">
+                          {tx.account ? walletLabel(tx.account, t) : "-"}
+                        </td>
+                        <td className="py-3 pr-4 text-right font-mono tabular-nums font-medium">
+                          <span
+                            className={
+                              tx.kind === "income"
+                                ? "text-income"
+                                : tx.kind === "expense"
+                                  ? "text-expense"
+                                  : ""
+                            }
+                          >
+                            {tx.kind === "income" ? "+" : tx.kind === "expense" ? "−" : ""}
+                            {money(tx.amount, tx.currency)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  {t("Belum ada transaksi. Mulai catat sekarang!")}
+                </div>
+              )}
+            </ScrollArea>
+          </Card>
+        </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {isAdmin ? (
-          <>
-            <Card className="min-w-0 p-5">
-              <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
-                <h2 className="min-w-0 truncate text-lg font-semibold">{t("Pengingat")}</h2>
-                <Link to="/reminders" className="shrink-0 text-xs text-primary">
+        {/* Right column: Category breakdown, Net worth, Reminders, Budgets, Accounts */}
+        <div className="space-y-4">
+          {/* Expense by Category - Donut + List */}
+          <Card className="p-5">
+            <h2 className="mb-4 text-lg font-semibold">{t("Pengeluaran per kategori")}</h2>
+            {d.byCategory.length ? (
+              <>
+                <div className="h-40 flex items-center justify-center">
+                  <DonutChart
+                    data={d.byCategory.map((c: any, i: number) => ({
+                      name: c.name,
+                      value: c.value,
+                      color: c.color ?? PIE[i % PIE.length],
+                    }))}
+                    innerRadius={42}
+                    outerRadius={70}
+                  />
+                </div>
+                <ul className="mt-4 space-y-3">
+                  {d.byCategory.slice(0, 6).map((c: any, i: number) => (
+                    <li key={i} className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{ background: c.color ?? PIE[i % PIE.length] }}
+                        />
+                        <span className="truncate text-sm">{c.name}</span>
+                      </div>
+                      <span className="num shrink-0 font-mono tabular-nums text-muted-foreground">
+                        {money(c.value)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                {t("Belum ada pengeluaran bulan ini.")}
+              </div>
+            )}
+          </Card>
+
+          {/* Net Worth / Wallet Balance Chart */}
+          {nw?.length ? (
+            <Card className="p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">
+                  {isAdmin ? t("Kekayaan bersih (12 bulan)") : t("Saldo dompet (12 bulan)")}
+                </h2>
+              </div>
+              <div className="h-56 short:h-44">
+                <NetWorthChart
+                  data={nw.map((r) => ({ ...r, label: shortMonth(r.month, locale) }))}
+                  label={isAdmin ? t("Kekayaan bersih (12 bulan)") : t("Saldo dompet (12 bulan)")}
+                />
+              </div>
+              <div className="mt-3 text-right">
+                <p className="num text-lg font-semibold font-mono tabular-nums">
+                  {money(nw[nw.length - 1]!.netWorth)}
+                </p>
+                {nw[nw.length - 1]!.gold > 0 ? (
+                  <p className="num text-xs text-muted-foreground">
+                    {t("termasuk emas")} {money(nw[nw.length - 1]!.gold)}
+                  </p>
+                ) : null}
+              </div>
+            </Card>
+          ) : null}
+
+          {/* Reminders */}
+          {isAdmin ? (
+            <Card className="p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">{t("Pengingat")}</h2>
+                <Link to="/reminders" className="text-xs text-primary hover:underline">
                   {t("Semua")}
                 </Link>
               </div>
               {d.reminders.length ? (
-                <ul className="space-y-3">
+                <ul className="space-y-2 max-h-64 overflow-y-auto">
                   {d.reminders.map((r: any) => (
                     <li
                       key={r.type + r.id}
-                      className="flex min-w-0 items-start justify-between gap-3 text-sm"
+                      className="flex items-start justify-between gap-3 text-sm p-2 rounded-lg hover:bg-muted/50"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="flex min-w-0 items-center gap-1.5 font-medium">
+                        <p className="flex items-center gap-1.5 font-medium">
                           {r.overdue ? (
                             <AlertTriangle className="size-3.5 shrink-0 text-expense" />
                           ) : null}
                           <span className="truncate">{r.title}</span>
                         </p>
                         <p
-                          className={`text-xs ${r.overdue ? "text-expense" : "text-muted-foreground"}`}
+                          className={`text-xs ${
+                            r.overdue ? "text-expense" : "text-muted-foreground"
+                          }`}
                         >
                           {r.type === "budget"
                             ? t("Peringatan budget")
                             : r.overdue
-                              ? `${t("terlambat ")}${-r.days_left} ${t("hari")}`
+                              ? `${t("terlambat ")} ${-r.days_left} ${t("hari")}`
                               : r.days_left === 0
                                 ? t("Hari ini")
                                 : `${r.days_left} ${t("hari lagi")} · ${dateLabel(r.due_date, locale)}`}
                         </p>
                       </div>
-                      <span className="num shrink-0">{money(r.amount, r.currency)}</span>
+                      <span className="num shrink-0 font-mono tabular-nums">
+                        {money(r.amount, r.currency)}
+                      </span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <Empty text={t("Tidak ada tagihan 14 hari ke depan.")} />
+                <div className="py-4 text-center text-sm text-muted-foreground">
+                  {t("Tidak ada tagihan 14 hari ke depan.")}
+                </div>
               )}
             </Card>
-            <Card className="min-w-0 p-5">
-              <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
-                <h2 className="min-w-0 truncate text-lg font-semibold">{t("Budget")}</h2>
-                <Link to="/budgets" className="shrink-0 text-xs text-primary">
+          ) : null}
+
+          {/* Budgets */}
+          {isAdmin ? (
+            <Card className="p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">{t("Budget")}</h2>
+                <Link to="/budgets" className="text-xs text-primary hover:underline">
                   {t("Atur")}
                 </Link>
               </div>
               {d.budgets.length ? (
-                <ul className="space-y-3">
+                <ul className="space-y-3 max-h-64 overflow-y-auto">
                   {d.budgets.map((b: any) => (
-                    <li key={b.id} className="min-w-0 text-sm">
-                      <div className="mb-1 flex min-w-0 justify-between gap-2">
-                        <span className="min-w-0 truncate">{b.category}</span>
+                    <li key={b.id} className="min-w-0">
+                      <div className="mb-1 flex justify-between gap-2">
+                        <span className="truncate text-sm">{b.category}</span>
                         <span
-                          className={`num shrink-0 ${b.percent >= 100 ? "text-expense" : "text-muted-foreground"}`}
+                          className={`num shrink-0 font-mono tabular-nums ${
+                            b.percent >= 100 ? "text-expense" : "text-muted-foreground"
+                          }`}
                         >
                           {Math.round(b.percent)}%
                         </span>
@@ -342,121 +428,99 @@ function Dashboard() {
                       <Progress
                         value={Math.min(100, b.percent)}
                         aria-label={`${b.category} ${Math.round(b.percent)}%`}
+                        className="h-1.5"
                       />
                     </li>
                   ))}
                 </ul>
               ) : (
-                <Empty text={t("Belum ada budget.")} />
+                <div className="py-4 text-center text-sm text-muted-foreground">
+                  {t("Belum ada budget.")}
+                </div>
               )}
             </Card>
-          </>
-        ) : null}
-        <Card className="min-w-0 p-5">
-          <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
-            <h2 className="min-w-0 truncate text-lg font-semibold">{t("Saldo akun")}</h2>
-            <Link to="/accounts" className="shrink-0 text-xs text-primary">
-              {t("Kelola")}
-            </Link>
-          </div>
-          {d.balances.length ? (
-            <ul className="space-y-2 text-sm">
-              {d.balances.map((a: any) => (
-                <li key={a.id} className="flex min-w-0 justify-between gap-2">
-                  <span className="min-w-0 truncate">{a.name}</span>
-                  <span className="num shrink-0">{money(a.balance, a.currency)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <Empty text={t("Tambahkan akun bank / e-wallet.")} />
-          )}
-        </Card>
-      </div>
+          ) : null}
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="min-w-0 p-5 lg:col-span-2">
-          <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
-            <h2 className="min-w-0 truncate text-lg font-semibold">{t("Transaksi terbaru")}</h2>
-            <Link to="/transactions" className="shrink-0 text-xs text-primary">
-              {t("Semua")}
-            </Link>
-          </div>
-          {d.recent.length ? (
-            <ul className="divide-y">
-              {d.recent.map((t2: any) => (
-                <li
-                  key={t2.id}
-                  className="flex min-w-0 items-center justify-between gap-3 py-2.5 text-sm"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">
-                      {t2.description || t2.merchant || t2.category?.name || "Transaksi"}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {dateLabel(t2.occurred_at, locale)} ·{" "}
-                      {t2.category?.name ?? (t2.kind === "transfer" ? t("Transfer") : "-")}
-                      {t2.account ? ` · ${walletLabel(t2.account, t)}` : ""}
-                    </p>
-                  </div>
-                  <span
-                    className={`num shrink-0 font-medium ${t2.kind === "income" ? "text-income" : t2.kind === "expense" ? "text-expense" : ""}`}
-                  >
-                    {t2.kind === "income" ? "+" : t2.kind === "expense" ? "−" : ""}
-                    {money(t2.amount, t2.currency)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <Empty text={t("Belum ada transaksi. Mulai catat sekarang!")} />
-          )}
-        </Card>
-        {isAdmin ? (
-          <Card className="min-w-0 p-5">
-            <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
-              <h2 className="min-w-0 truncate text-lg font-semibold">{t("Target tabungan")}</h2>
-              <Link to="/goals" className="shrink-0 text-xs text-primary">
+          {/* Account Balances */}
+          <Card className="p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{t("Saldo akun")}</h2>
+              <Link to="/accounts" className="text-xs text-primary hover:underline">
                 {t("Kelola")}
               </Link>
             </div>
-            {d.goals.length ? (
-              <ul className="space-y-3 text-sm">
-                {d.goals.map((g: any) => {
-                  const p = g.target_amount ? (g.saved_amount / g.target_amount) * 100 : 0;
-                  return (
-                    <li key={g.id} className="min-w-0">
-                      <div className="mb-1 flex min-w-0 justify-between gap-2">
-                        <span className="min-w-0 truncate">{g.name}</span>
-                        <span className="num shrink-0 text-muted-foreground">{Math.round(p)}%</span>
-                      </div>
-                      <Progress
-                        value={Math.min(100, p)}
-                        aria-label={`${g.name} ${Math.round(p)}%`}
-                      />
-                      {(() => {
-                        const need = projectGoal({
-                          target: g.target_amount,
-                          saved: g.saved_amount,
-                          deadline: g.deadline,
-                          today: todayStr(),
-                          createdAt: g.created_at,
-                        }).monthlyNeeded;
-                        return need ? (
-                          <p className="mt-1 truncate text-xs text-muted-foreground">
-                            {t("Setor")} <span className="num">{money(need)}</span>/{t("bln")}
-                          </p>
-                        ) : null;
-                      })()}
-                    </li>
-                  );
-                })}
+            {d.balances.length ? (
+              <ul className="space-y-2">
+                {d.balances.map((a: any) => (
+                  <li key={a.id} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="truncate">{a.name}</span>
+                    <span className="num shrink-0 font-mono tabular-nums">
+                      {money(a.balance, a.currency)}
+                    </span>
+                  </li>
+                ))}
               </ul>
             ) : (
-              <Empty text={t("Belum ada target.")} />
+              <div className="py-4 text-center text-sm text-muted-foreground">
+                {t("Tambahkan akun bank / e-wallet.")}
+              </div>
             )}
           </Card>
-        ) : null}
+
+          {/* Goals */}
+          {isAdmin ? (
+            <Card className="p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">{t("Target tabungan")}</h2>
+                <Link to="/goals" className="text-xs text-primary hover:underline">
+                  {t("Kelola")}
+                </Link>
+              </div>
+              {d.goals.length ? (
+                <ul className="space-y-3 max-h-64 overflow-y-auto">
+                  {d.goals.map((g: any) => {
+                    const p = g.target_amount ? (g.saved_amount / g.target_amount) * 100 : 0;
+                    return (
+                      <li key={g.id} className="min-w-0">
+                        <div className="mb-1 flex justify-between gap-2">
+                          <span className="truncate text-sm">{g.name}</span>
+                          <span className="num shrink-0 font-mono tabular-nums text-muted-foreground">
+                            {Math.round(p)}%
+                          </span>
+                        </div>
+                        <Progress
+                          value={Math.min(100, p)}
+                          aria-label={`${g.name} ${Math.round(p)}%`}
+                          className="h-1.5"
+                        />
+                        {(() => {
+                          const need = projectGoal({
+                            target: g.target_amount,
+                            saved: g.saved_amount,
+                            deadline: g.deadline,
+                            today: todayStr(),
+                            createdAt: g.created_at,
+                          }).monthlyNeeded;
+                          return need ? (
+                            <p className="mt-1 truncate text-xs text-muted-foreground">
+                              {t("Setor")}{" "}
+                              <span className="num font-mono tabular-nums">{money(need)}</span>/
+                              {t("bln")}
+                            </p>
+                          ) : null;
+                        })()}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div className="py-4 text-center text-sm text-muted-foreground">
+                  {t("Belum ada target.")}
+                </div>
+              )}
+            </Card>
+          ) : null}
+        </div>
       </div>
 
       <TransactionDialog
@@ -468,38 +532,69 @@ function Dashboard() {
   );
 }
 
-function Stat({
-  label,
-  value,
-  tone,
-  icon,
-  footer,
-}: {
+interface StatCardProps {
   label: string;
-  value: number;
-  tone: "income" | "expense";
+  value: string;
   icon: React.ReactNode;
-  footer?: React.ReactNode;
-}) {
+  tone: "income" | "expense" | "warning" | "primary";
+  trend?: { current: number; previous: number | undefined; goodWhenUp: boolean } | null;
+}
+
+function StatCard({ label, value, icon, tone, trend }: StatCardProps) {
   usePrivacy();
+  const { t } = useI18n();
+
+  const toneClasses = {
+    income: "border-l-4 border-l-income bg-green-500/5 dark:bg-green-950/10",
+    expense: "border-l-4 border-l-expense bg-red-500/5 dark:bg-red-950/10",
+    warning: "border-l-4 border-l-warning bg-yellow-500/5 dark:bg-yellow-950/10",
+    primary: "border-l-4 border-l-primary bg-primary/5 dark:bg-primary/10",
+  };
+
+  const valueColors = {
+    income: "text-income",
+    expense: "text-expense",
+    warning: "text-warning",
+    primary: "text-foreground",
+  };
+
+  const iconColors = {
+    income: "text-income",
+    expense: "text-expense",
+    warning: "text-warning",
+    primary: "text-primary",
+  };
+
   return (
-    <Card className="flex min-w-0 flex-col p-5">
-      <p className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
-        <span className={tone === "income" ? "text-income" : "text-expense"}>{icon}</span>
-        {label}
-      </p>
-      <p
-        className={`num mt-2 break-words text-2xl font-semibold ${tone === "income" ? "text-income" : "text-expense"}`}
-      >
-        {money(value)}
-      </p>
-      {footer ? <div className="mt-auto pt-3 text-xs text-muted-foreground">{footer}</div> : null}
+    <Card className={`relative p-5 ${toneClasses[tone]} transition-all hover:shadow-md`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+          <p className={`num mt-1.5 break-words text-2xl font-semibold ${valueColors[tone]}`}>
+            {value}
+          </p>
+          {trend && trend.previous !== undefined ? (
+            <MonthDelta
+              current={trend.current}
+              previous={trend.previous}
+              goodWhenUp={trend.goodWhenUp}
+            />
+          ) : null}
+        </div>
+        <div
+          className={`shrink-0 p-2 rounded-xl ${iconColors[tone]}`}
+          style={{
+            backgroundColor: `${getComputedStyle(document.documentElement).getPropertyValue(`--color-${tone}`) || ""}15`,
+          }}
+        >
+          {icon}
+        </div>
+      </div>
     </Card>
   );
 }
 
-/** "▲ 12% vs bulan lalu" — tone follows whether the direction is good for this metric. */
-function MonthDelta({
+export function MonthDelta({
   current,
   previous,
   goodWhenUp,
@@ -510,18 +605,19 @@ function MonthDelta({
 }) {
   const { t } = useI18n();
   const pct = monthChange(current, previous);
-  if (pct === null) return <p>{t("Belum ada data bulan lalu")}</p>;
+  if (pct === null)
+    return <p className="mt-2 text-xs text-muted-foreground">{t("Belum ada data bulan lalu")}</p>;
   const flat = Math.round(pct) === 0;
   const up = pct > 0;
   const tone = flat ? "" : up === goodWhenUp ? "text-income" : "text-expense";
   return (
-    <p>
-      <span className={`num font-medium ${tone}`}>
+    <p className="mt-2">
+      <span className={`num font-medium text-xs ${tone}`}>
         <span aria-hidden="true">{flat ? "=" : up ? "▲" : "▼"}</span>
         <span className="sr-only">{flat ? t("Tetap") : up ? t("Naik") : t("Turun")}</span>{" "}
         {formatPercent(Math.abs(pct))}
       </span>{" "}
-      {t("vs bulan lalu")}
+      <span className="text-xs text-muted-foreground">{t("vs bulan lalu")}</span>
     </p>
   );
 }
