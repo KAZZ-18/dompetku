@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -152,16 +152,9 @@ function Dashboard() {
     { icon: TrendingUpIcon, label: t("Laporan"), href: "/reports" },
   ];
 
-  const chartColors = {
-    income: "#22c55e",
-    expense: "#ef4444",
-    savings: "#14b8a6",
-    investment: "#f59e0b",
-  };
-
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background dark:bg-gray-950 text-foreground dark:text-gray-100 transition-colors duration-300">
+      <div className="min-h-screen bg-background text-foreground transition-colors duration-150">
         {/* Mobile sidebar overlay */}
         <AnimatePresence>
           {sidebarOpen && (
@@ -169,6 +162,7 @@ function Dashboard() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 150 }}
               className="fixed inset-0 z-40 bg-black/50 lg:hidden"
               onClick={() => setSidebarOpen(false)}
               aria-hidden="true"
@@ -178,12 +172,12 @@ function Dashboard() {
 
         {/* Sidebar */}
         <motion.aside
-          initial={{ x: -300 }}
-          animate={{ x: sidebarOpen ? 0 : -300 }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="fixed left-0 top-0 z-50 h-screen w-64 bg-card dark:bg-gray-900 border-r border-border dark:border-gray-800 flex flex-col transition-transform duration-300 lg:translate-x-0"
+          initial={{ x: -280 }}
+          animate={{ x: sidebarOpen ? 0 : -280 }}
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          className="fixed left-0 top-0 z-50 h-screen w-72 bg-background border-r border-border flex flex-col lg:translate-x-0"
         >
-          <div className="flex h-16 items-center justify-between px-4 border-b border-border dark:border-gray-800">
+          <div className="flex h-16 items-center justify-between px-4 border-b border-border">
             <Link
               to="/dashboard"
               className="flex items-center gap-2.5 font-display text-xl font-bold"
@@ -220,10 +214,7 @@ function Dashboard() {
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                placeholder={t("Cari cepat...")}
-                className="pl-9 bg-muted/50 dark:bg-gray-800/50 border-border dark:border-gray-700"
-              />
+              <Input placeholder={t("Cari cepat...")} className="pl-9 bg-muted border-border" />
             </div>
 
             {/* Navigation */}
@@ -232,10 +223,10 @@ function Dashboard() {
                 <Link
                   key={item.href}
                   to={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
                     item.active
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground dark:hover:bg-gray-800/50"
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >
@@ -256,7 +247,7 @@ function Dashboard() {
                 <>
                   <Button
                     variant="default"
-                    className="w-full justify-start gap-3 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    className="w-full justify-start gap-3"
                     onClick={() => setDlg({ open: true, draft: newTxDraft("income") })}
                   >
                     <Plus className="size-4" />
@@ -264,7 +255,7 @@ function Dashboard() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full justify-start gap-3 border-border dark:border-gray-700"
+                    className="w-full justify-start gap-3"
                     onClick={() => setDlg({ open: true, draft: newTxDraft("expense") })}
                   >
                     <Plus className="size-4" />
@@ -272,7 +263,7 @@ function Dashboard() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full justify-start gap-3 border-border dark:border-gray-700"
+                    className="w-full justify-start gap-3"
                     onClick={() => setDlg({ open: true, draft: newTxDraft("transfer") })}
                   >
                     <ArrowUpRight className="size-4" />
@@ -284,8 +275,8 @@ function Dashboard() {
           </div>
 
           {/* User Profile */}
-          <div className="p-4 border-t border-border dark:border-gray-800">
-            <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-muted/50 dark:bg-gray-800/50">
+          <div className="p-4 border-t border-border">
+            <div className="flex items-center gap-3 px-2 py-2 rounded-lg bg-muted">
               <Avatar className="size-10">
                 <AvatarImage src="/logo.svg" alt="" />
                 <AvatarFallback className="bg-primary text-primary-foreground font-display font-bold">
@@ -313,9 +304,9 @@ function Dashboard() {
         </motion.aside>
 
         {/* Main Content */}
-        <div className="lg:pl-64 flex flex-col min-h-screen">
+        <div className="lg:pl-72 flex flex-col min-h-screen">
           {/* Top Bar */}
-          <header className="sticky top-0 z-30 h-16 bg-background/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-border dark:border-gray-800 flex items-center justify-between px-4 lg:px-8">
+          <header className="sticky top-0 z-30 h-16 bg-background/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-4 lg:px-8">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
@@ -332,12 +323,12 @@ function Dashboard() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-2 bg-muted/50 dark:bg-gray-800/50 rounded-xl px-4 py-2 border border-border dark:border-gray-700">
+              <div className="hidden sm:flex items-center gap-2 bg-muted rounded-lg px-3 py-1.5 border border-border">
                 <Calendar className="size-4 text-muted-foreground" />
                 <select
                   value={month}
                   onChange={(e) => setMonth(e.target.value)}
-                  className="bg-transparent border-none text-sm font-medium focus-visible:outline-none cursor-pointer appearance-none text-foreground"
+                  className="bg-transparent border-none text-sm font-medium focus-visible:outline-none cursor-pointer appearance-none text-foreground w-auto"
                   aria-label={t("Pilih bulan")}
                 >
                   {Array.from({ length: 12 }, (_, i) => {
@@ -357,14 +348,14 @@ function Dashboard() {
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="size-5" />
                     {d.reminders.length > 0 && (
-                      <span className="absolute -top-1 -right-1 size-4 rounded-full bg-expense text-expense-foreground text-[10px] font-bold flex items-center justify-center">
+                      <span className="absolute -top-0.5 -right-0.5 size-3.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
                         {d.reminders.length > 9 ? "9+" : d.reminders.length}
                       </span>
                     )}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" align="end" className="w-80 p-0">
-                  <div className="p-3 border-b border-border dark:border-gray-800">
+                  <div className="p-3 border-b border-border">
                     <p className="font-semibold">{t("Pengingat")}</p>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
@@ -372,7 +363,7 @@ function Dashboard() {
                       d.reminders.map((r: any) => (
                         <div
                           key={r.type + r.id}
-                          className="px-3 py-2 hover:bg-muted/50 dark:hover:bg-gray-800/50 border-b border-border/50 dark:border-gray-800/50 last:border-0"
+                          className="px-3 py-2 hover:bg-muted border-b border-border/50 last:border-0"
                         >
                           <p className="text-sm font-medium truncate">{r.title}</p>
                           <p className="text-xs text-muted-foreground">
@@ -382,7 +373,7 @@ function Dashboard() {
                                 ? `${t("Terlambat")} ${-r.days_left} ${t("hari")}`
                                 : r.days_left === 0
                                   ? t("Hari ini")
-                                  : `${r.days_left} ${t("hari lagi")}`}
+                                  : `${r.days_left} ${t("hari lagi")} · ${dateLabel(r.due_date, locale)}`}
                           </p>
                         </div>
                       ))
@@ -397,7 +388,7 @@ function Dashboard() {
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-xl">
+                  <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-lg">
                     <Avatar className="h-9 w-9">
                       <AvatarImage src="/logo.svg" alt="" />
                       <AvatarFallback className="bg-primary text-primary-foreground">
@@ -407,7 +398,7 @@ function Dashboard() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent side="bottom" align="end" className="w-56 p-1">
-                  <div className="px-3 py-2 border-b border-border dark:border-gray-800">
+                  <div className="px-3 py-2 border-b border-border">
                     <p className="font-medium truncate">{isAdmin ? "Admin" : "Member"}</p>
                     <p className="text-xs text-muted-foreground truncate">{t("Dompetku")}</p>
                   </div>
@@ -437,7 +428,7 @@ function Dashboard() {
                           await logoutFn();
                           window.location.href = "/login";
                         }}
-                        className="text-expense focus:text-expense"
+                        className="text-destructive focus:text-destructive"
                       >
                         <LogOut className="size-4 mr-2" />
                         {t("Keluar")}
@@ -450,13 +441,13 @@ function Dashboard() {
           </header>
 
           {/* Page Content */}
-          <main className="flex-1 p-4 lg:p-8 overflow-x-auto">
-            <div className="max-w-[1600px] mx-auto space-y-6">
+          <main className="flex-1 p-4 lg:p-6 overflow-x-auto">
+            <div className="max-w-[1400px] mx-auto space-y-6">
               {/* Welcome Header */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: 200 }}
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
               >
                 <div>
@@ -468,7 +459,7 @@ function Dashboard() {
                   </h2>
                 </div>
                 <Button
-                  className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
+                  className="gap-2"
                   onClick={() => setDlg({ open: true, draft: newTxDraft("income") })}
                 >
                   <Plus className="size-4" />
@@ -476,11 +467,11 @@ function Dashboard() {
                 </Button>
               </motion.div>
 
-              {/* KPI Cards Row */}
+              {/* KPI Cards Row - Monochrome with semantic accents only */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
+                transition={{ duration: 200, delay: 50 }}
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
               >
                 <KPICard
@@ -493,7 +484,6 @@ function Dashboard() {
                       : null
                   }
                   color="income"
-                  delay={0}
                 />
                 <KPICard
                   title={t("Total Pengeluaran")}
@@ -505,7 +495,6 @@ function Dashboard() {
                       : null
                   }
                   color="expense"
-                  delay={0.05}
                 />
                 <KPICard
                   title={t("Rasio Tabungan")}
@@ -514,22 +503,20 @@ function Dashboard() {
                   color={
                     savingsRatePct >= 20 ? "income" : savingsRatePct >= 0 ? "warning" : "expense"
                   }
-                  delay={0.1}
                 />
                 <KPICard
                   title={isAdmin ? t("Investasi") : t("Saldo Total")}
                   value={money(isAdmin ? totalInvestments : totalBalance)}
                   icon={<Wallet className="size-5" />}
                   color="primary"
-                  delay={0.15}
                 />
               </motion.div>
 
               {/* Middle Row: Charts */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.2 }}
+                transition={{ duration: 200, delay: 100 }}
                 className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6"
               >
                 {/* Earning Status Chart */}
@@ -538,7 +525,7 @@ function Dashboard() {
                   subtitle={t("6 bulan terakhir")}
                   action={
                     <Select value={month} onValueChange={setMonth}>
-                      <SelectTrigger className="w-[160px] bg-muted/50 dark:bg-gray-800/50 border-border dark:border-gray-700">
+                      <SelectTrigger className="w-[160px] bg-muted border-border">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -565,9 +552,9 @@ function Dashboard() {
 
                 {/* Upcoming Bills / Reminders */}
                 <motion.div
-                  initial={{ opacity: 0, x: 20 }}
+                  initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.25 }}
+                  transition={{ duration: 200, delay: 150 }}
                   className="space-y-4"
                 >
                   <ChartCard
@@ -579,19 +566,19 @@ function Dashboard() {
                       </Link>
                     }
                   >
-                    <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
                       {d.reminders.length ? (
                         d.reminders.map((r: any, i: number) => (
                           <motion.div
                             key={r.type + r.id}
-                            initial={{ opacity: 0, x: 20 }}
+                            initial={{ opacity: 0, x: 10 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.3, delay: i * 0.05 }}
-                            className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/50 dark:bg-gray-800/50 border border-border dark:border-gray-800 hover:border-primary/50 transition-colors"
+                            transition={{ duration: 150, delay: i * 30 }}
+                            className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted border border-border hover:border-primary/50 transition-colors duration-150"
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className="size-10 shrink-0 rounded-xl bg-card dark:bg-gray-800 flex items-center justify-center border border-border dark:border-gray-700">
-                                <AlertTriangle className="size-5 text-expense" />
+                              <div className="size-10 shrink-0 rounded-lg bg-card flex items-center justify-center border border-border">
+                                <AlertTriangle className="size-5 text-destructive" />
                               </div>
                               <div className="min-w-0">
                                 <p className="font-medium truncate">{r.title}</p>
@@ -608,25 +595,24 @@ function Dashboard() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="font-mono tabular-nums font-semibold text-expense">
+                              <p className="font-mono tabular-nums font-medium text-destructive">
                                 {money(r.amount, r.currency)}
                               </p>
-                              <Badge
-                                variant={
+                              <span
+                                className={`text-xs font-medium px-2 py-0.5 rounded ${
                                   r.overdue
-                                    ? "destructive"
+                                    ? "bg-destructive/10 text-destructive"
                                     : r.days_left <= 3
-                                      ? "outline"
-                                      : "secondary"
-                                }
-                                className="text-xs mt-1"
+                                      ? "bg-warning/10 text-warning"
+                                      : "bg-muted-foreground/10 text-muted-foreground"
+                                }`}
                               >
                                 {r.overdue
                                   ? t("Terlambat")
                                   : r.days_left <= 3
                                     ? t("Segera")
                                     : t("Dijadwalkan")}
-                              </Badge>
+                              </span>
                             </div>
                           </motion.div>
                         ))
@@ -646,9 +632,9 @@ function Dashboard() {
 
               {/* Bottom Row: Transactions + Spending */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.3 }}
+                transition={{ duration: 200, delay: 150 }}
                 className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6"
               >
                 {/* Recent Transactions */}
@@ -665,7 +651,7 @@ function Dashboard() {
                     {d.recent.length ? (
                       <table className="w-full text-sm" role="table">
                         <thead>
-                          <tr className="border-b border-border dark:border-gray-800 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             <th className="pb-3 pr-4">{t("Merchant")}</th>
                             <th className="pb-3 pr-4 text-center">{t("Tanggal")}</th>
                             <th className="pb-3 pr-4 text-center">{t("Akun")}</th>
@@ -673,18 +659,18 @@ function Dashboard() {
                             <th className="pb-3 pr-4 text-right">{t("Jumlah")}</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-border/50 dark:divide-gray-800/50">
+                        <tbody className="divide-y divide-border/50">
                           {d.recent.map((tx: any, i: number) => (
                             <motion.tr
                               key={tx.id}
-                              initial={{ opacity: 0, x: -20 }}
+                              initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
-                              transition={{ duration: 0.3, delay: i * 0.03 }}
-                              className="hover:bg-muted/50 dark:hover:bg-gray-800/50 transition-colors"
+                              transition={{ duration: 150, delay: i * 20 }}
+                              className="hover:bg-muted transition-colors duration-150"
                             >
                               <td className="py-3 pr-4">
                                 <div className="flex items-center gap-3">
-                                  <div className="size-9 shrink-0 rounded-xl bg-card dark:bg-gray-800 flex items-center justify-center border border-border dark:border-gray-700">
+                                  <div className="size-9 shrink-0 rounded-lg bg-card flex items-center justify-center border border-border">
                                     {tx.category ? (
                                       <span
                                         className="size-2.5 rounded-full"
@@ -714,15 +700,14 @@ function Dashboard() {
                                 {tx.account ? walletLabel(tx.account, t) : "-"}
                               </td>
                               <td className="py-3 pr-4 text-center">
-                                <Badge
-                                  variant={
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
                                     tx.kind === "income"
-                                      ? "default"
+                                      ? "bg-green-500/10 text-green-500"
                                       : tx.kind === "expense"
-                                        ? "destructive"
-                                        : "outline"
-                                  }
-                                  className="text-xs gap-1"
+                                        ? "bg-red-500/10 text-red-500"
+                                        : "bg-primary/10 text-primary"
+                                  }`}
                                 >
                                   {tx.kind === "income" && <ArrowUpRight className="size-3" />}
                                   {tx.kind === "expense" && <ArrowDownRight className="size-3" />}
@@ -734,15 +719,15 @@ function Dashboard() {
                                         ? "Keluar"
                                         : "Transfer",
                                   )}
-                                </Badge>
+                                </span>
                               </td>
                               <td className="py-3 pr-4 text-right font-mono tabular-nums font-medium">
                                 <span
                                   className={
                                     tx.kind === "income"
-                                      ? "text-income"
+                                      ? "text-green-500"
                                       : tx.kind === "expense"
-                                        ? "text-expense"
+                                        ? "text-red-500"
                                         : "text-primary"
                                   }
                                 >
@@ -768,9 +753,9 @@ function Dashboard() {
 
                 {/* Spending Donut Chart */}
                 <motion.div
-                  initial={{ opacity: 0, x: 20 }}
+                  initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: 0.35 }}
+                  transition={{ duration: 200, delay: 200 }}
                   className="space-y-4"
                 >
                   <ChartCard title={t("Pengeluaran per Kategori")} subtitle={t("Bulan ini")}>
@@ -800,10 +785,10 @@ function Dashboard() {
                         {d.byCategory.slice(0, 6).map((c: any, i: number) => (
                           <motion.div
                             key={i}
-                            initial={{ opacity: 0, x: -20 }}
+                            initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.3, delay: i * 0.05 }}
-                            className="flex items-center justify-between gap-2 p-2 rounded-xl hover:bg-muted/50 dark:hover:bg-gray-800/50 transition-colors"
+                            transition={{ duration: 150, delay: i * 30 }}
+                            className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted transition-colors duration-150"
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
                               <span
@@ -849,69 +834,36 @@ interface KPICardProps {
   icon: React.ReactNode;
   trend?: { current: number; previous: number | undefined; goodWhenUp: boolean } | null;
   color: "income" | "expense" | "warning" | "primary";
-  delay: number;
 }
 
-function KPICard({ title, value, icon, trend, color, delay }: KPICardProps) {
+function KPICard({ title, value, icon, trend, color }: KPICardProps) {
   usePrivacy();
   const { t } = useI18n();
 
-  const colorConfig = {
-    income: {
-      bg: "bg-green-500/10 dark:bg-green-950/20",
-      border: "border-green-500/20 dark:border-green-500/30",
-      iconBg: "bg-green-500/20 dark:bg-green-500/30",
-      iconColor: "text-green-500",
-      valueColor: "text-green-400 dark:text-green-300",
-      trendGood: "text-green-400",
-      trendBad: "text-red-400",
-    },
-    expense: {
-      bg: "bg-red-500/10 dark:bg-red-950/20",
-      border: "border-red-500/20 dark:border-red-500/30",
-      iconBg: "bg-red-500/20 dark:bg-red-500/30",
-      iconColor: "text-red-500",
-      valueColor: "text-red-400 dark:text-red-300",
-      trendGood: "text-green-400",
-      trendBad: "text-red-400",
-    },
-    warning: {
-      bg: "bg-yellow-500/10 dark:bg-yellow-950/20",
-      border: "border-yellow-500/20 dark:border-yellow-500/30",
-      iconBg: "bg-yellow-500/20 dark:bg-yellow-500/30",
-      iconColor: "text-yellow-500",
-      valueColor: "text-yellow-400 dark:text-yellow-300",
-      trendGood: "text-green-400",
-      trendBad: "text-red-400",
-    },
-    primary: {
-      bg: "bg-primary/10 dark:bg-primary/20",
-      border: "border-primary/20 dark:border-primary/30",
-      iconBg: "bg-primary/20 dark:bg-primary/30",
-      iconColor: "text-primary",
-      valueColor: "text-primary dark:text-primary",
-      trendGood: "text-green-400",
-      trendBad: "text-red-400",
-    },
+  const iconColors = {
+    income: "text-green-500",
+    expense: "text-red-500",
+    warning: "text-yellow-500",
+    primary: "text-primary",
   };
 
-  const c = colorConfig[color];
+  const trendColors = {
+    income: { good: "text-green-500", bad: "text-red-500" },
+    expense: { good: "text-green-500", bad: "text-red-500" },
+    warning: { good: "text-green-500", bad: "text-red-500" },
+    primary: { good: "text-green-500", bad: "text-red-500" },
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", damping: 20, stiffness: 200, delay }}
-      className={`relative p-5 rounded-2xl border ${c.bg} ${c.border} hover:border-primary/50 transition-all duration-300 group`}
-    >
+    <Card className="p-5 border-border hover:border-primary/50 transition-colors duration-150">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">{title}</p>
           <motion.p
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: delay + 0.1, duration: 0.3 }}
-            className={`num mt-2 break-words text-2xl lg:text-3xl font-bold ${c.valueColor}`}
+            transition={{ delay: 0.1, duration: 150 }}
+            className="num mt-2 break-words text-2xl lg:text-3xl font-bold text-foreground"
           >
             {value}
           </motion.p>
@@ -920,21 +872,12 @@ function KPICard({ title, value, icon, trend, color, delay }: KPICardProps) {
               current={trend.current}
               previous={trend.previous}
               goodWhenUp={trend.goodWhenUp}
-              goodColor={c.trendGood}
-              badColor={c.trendBad}
             />
           ) : null}
         </div>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", damping: 15, stiffness: 150, delay: delay + 0.15 }}
-          className={`shrink-0 p-3 rounded-xl ${c.iconBg} ${c.iconColor}`}
-        >
-          {icon}
-        </motion.div>
+        <div className={`shrink-0 p-2.5 rounded-lg bg-muted ${iconColors[color]}`}>{icon}</div>
       </div>
-    </motion.div>
+    </Card>
   );
 }
 
@@ -942,20 +885,19 @@ interface MonthDeltaProps {
   current: number;
   previous: number | undefined;
   goodWhenUp: boolean;
-  goodColor: string;
-  badColor: string;
 }
 
-function MonthDelta({ current, previous, goodWhenUp, goodColor, badColor }: MonthDeltaProps) {
+function MonthDelta({ current, previous, goodWhenUp }: MonthDeltaProps) {
   const { t } = useI18n();
   const pct = monthChange(current, previous);
   if (pct === null)
     return <p className="mt-2 text-xs text-muted-foreground">{t("Belum ada data bulan lalu")}</p>;
   const flat = Math.round(pct) === 0;
   const up = pct > 0;
-  const tone = flat ? "text-muted-foreground" : up === goodWhenUp ? goodColor : badColor;
+  const isGood = flat ? null : up === goodWhenUp;
+  const tone = flat ? "text-muted-foreground" : isGood ? "text-green-500" : "text-red-500";
   return (
-    <motion.p initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="mt-2">
+    <motion.p initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} className="mt-2">
       <span className={`num font-medium text-xs ${tone}`}>
         <span aria-hidden="true">{flat ? "➤" : up ? "▲" : "▼"}</span>
         <span className="sr-only">{flat ? t("Tetap") : up ? t("Naik") : t("Turun")}</span>{" "}
@@ -975,7 +917,7 @@ interface ChartCardProps {
 
 function ChartCard({ title, subtitle, action, children }: ChartCardProps) {
   return (
-    <Card className="p-5 bg-card dark:bg-gray-900 border-border dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow duration-300">
+    <Card className="p-5 border-border">
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h3 className="font-display text-lg font-semibold">{title}</h3>
@@ -988,7 +930,7 @@ function ChartCard({ title, subtitle, action, children }: ChartCardProps) {
   );
 }
 
-/* Animated Charts using Framer Motion + Recharts */
+/* Animated Charts using Motion + Recharts - Monochrome with green/red semantic colors */
 function AnimatedCashflowChart({
   data,
   incomeLabel,
@@ -998,45 +940,40 @@ function AnimatedCashflowChart({
   incomeLabel: string;
   expenseLabel: string;
 }) {
-  const colors = {
-    income: "#22c55e",
-    expense: "#ef4444",
-  };
-
   return (
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={colors.income} stopOpacity={0.3} />
-            <stop offset="95%" stopColor={colors.income} stopOpacity={0} />
+            <stop offset="5%" stopColor="#16a34a" stopOpacity={0.2} />
+            <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
           </linearGradient>
           <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={colors.expense} stopOpacity={0.3} />
-            <stop offset="95%" stopColor={colors.expense} stopOpacity={0} />
+            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
+            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
         <XAxis
           dataKey="label"
-          tick={{ fill: "#9ca3af", fontSize: 11 }}
-          axisLine={{ stroke: "#374151" }}
+          tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+          axisLine={{ stroke: "var(--color-border)" }}
           tickLine={false}
         />
         <YAxis
-          tick={{ fill: "#9ca3af", fontSize: 11 }}
+          tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
           axisLine={false}
           tickLine={false}
           tickFormatter={(value) => (value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value)}
         />
         <RechartsTooltip
           contentStyle={{
-            backgroundColor: "#1f2937",
-            border: "1px solid #374151",
-            borderRadius: "12px",
+            backgroundColor: "var(--color-popover)",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--radius)",
             boxShadow: "0 10px 40px rgba(0,0,0,0.3)",
           }}
-          labelStyle={{ color: "#f3f4f6", fontWeight: 600 }}
+          labelStyle={{ color: "var(--color-foreground)", fontWeight: 600 }}
           itemStyle={{ fontSize: 12 }}
           formatter={(value: number) => [money(value), ""]}
         />
@@ -1045,34 +982,28 @@ function AnimatedCashflowChart({
           iconSize={8}
           iconType="circle"
           formatter={(value) => (
-            <span style={{ color: value === incomeLabel ? colors.income : colors.expense }}>
-              {value}
-            </span>
+            <span style={{ color: value === incomeLabel ? "#16a34a" : "#ef4444" }}>{value}</span>
           )}
         />
         <Area
           type="monotone"
           dataKey="income"
           stackId="1"
-          stroke={colors.income}
+          stroke="#16a34a"
           strokeWidth={2}
           fillOpacity={1}
           fill="url(#incomeGradient)"
           name={incomeLabel}
-          animationDuration={800}
-          animationEasing="ease-out"
         />
         <Area
           type="monotone"
           dataKey="expense"
           stackId="1"
-          stroke={colors.expense}
+          stroke="#ef4444"
           strokeWidth={2}
           fillOpacity={1}
           fill="url(#expenseGradient)"
           name={expenseLabel}
-          animationDuration={800}
-          animationEasing="ease-out"
         />
       </AreaChart>
     </ResponsiveContainer>
@@ -1088,8 +1019,6 @@ function AnimatedDonutChart({
   innerRadius: number;
   outerRadius: number;
 }) {
-  const COLORS = data.map((d) => d.color);
-
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
@@ -1104,18 +1033,16 @@ function AnimatedDonutChart({
           nameKey="name"
           label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
           labelLine={false}
-          animationDuration={1000}
-          animationEasing="ease-out"
         >
           {data.map((_, i) => (
-            <Cell key={`cell-${i}`} fill={COLORS[i]} />
+            <Cell key={`cell-${i}`} fill={data[i].color} />
           ))}
         </Pie>
         <RechartsTooltip
           contentStyle={{
-            backgroundColor: "#1f2937",
-            border: "1px solid #374151",
-            borderRadius: "12px",
+            backgroundColor: "var(--color-popover)",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--radius)",
             boxShadow: "0 10px 40px rgba(0,0,0,0.3)",
           }}
           formatter={(value: number) => [money(value), ""]}
