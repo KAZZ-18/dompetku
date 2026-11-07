@@ -1,4 +1,4 @@
-import { useBranding } from "@/components/app-logo";
+import { useBranding } from "@/lib/branding";
 import { LandingShell } from "./landing-shell";
 import {
   Faq,

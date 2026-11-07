@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 import { LanguageProvider, useI18n } from "@/lib/i18n";
 import { DEFAULT_LANG, urlLangFor, type Lang } from "@/lib/lang";
 import { PrivacySync } from "@/lib/privacy-sync";
-import { BrandingSync, brandingQuery } from "@/components/app-logo";
+import { BrandingSync } from "@/components/app-logo";
+import { brandingQuery } from "@/lib/branding";
 import { demoQuery } from "@/components/demo";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 

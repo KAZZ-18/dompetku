@@ -1,7 +1,8 @@
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { FlaskConical, Github, Languages, Menu, Moon, Sun } from "lucide-react";
-import { AppLogo, AppName, useBranding } from "@/components/app-logo";
+import { AppLogo, AppName } from "@/components/app-logo";
+import { useBranding } from "@/lib/branding";
 import { useIsDemo } from "@/components/demo";
 import { Button } from "@/components/ui/button";
 import {

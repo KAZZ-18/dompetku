@@ -1,7 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { FlaskConical, X } from "lucide-react";
-import { useBranding } from "@/components/app-logo";
+import { useBranding } from "@/lib/branding";
 import { DEMO_DISABLED, type DemoInfo } from "@/lib/demo";
 import { getDemoInfo } from "@/lib/demo.functions";
 import { useI18n } from "@/lib/i18n";

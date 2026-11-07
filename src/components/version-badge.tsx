@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ComponentProps } from "react";
-import { useBranding } from "@/components/app-logo";
+import { useBranding } from "@/lib/branding";
 import { getLatestRelease } from "@/lib/version.functions";
 import { useI18n } from "@/lib/i18n";
 import { appCommit, appVersion, releaseUrl, repoFromUrl, shortVersion } from "@/lib/version";

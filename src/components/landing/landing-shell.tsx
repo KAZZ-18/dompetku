@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useBranding } from "@/components/app-logo";
+import { useBranding } from "@/lib/branding";
 import { useI18n } from "@/lib/i18n";
 import { repoUrl } from "@/lib/landing";
 import { BackToTop } from "@/components/back-to-top";

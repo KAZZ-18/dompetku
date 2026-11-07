@@ -24,7 +24,8 @@ import {
 } from "lucide-react";
 import { logout } from "@/lib/auth.functions";
 import { useI18n } from "@/lib/i18n";
-import { AppLogo, AppName, useTagline } from "@/components/app-logo";
+import { AppLogo, AppName } from "@/components/app-logo";
+import { useTagline } from "@/lib/branding";
 import { togglePrivate, usePrivacy } from "@/lib/privacy";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";

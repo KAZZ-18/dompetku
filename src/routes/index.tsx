@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { brandingQuery } from "@/components/app-logo";
+import { brandingQuery } from "@/lib/branding";
 import { LandingPage } from "@/components/landing/landing-page";
 import { isAuthenticated } from "@/components/landing/public-session";
 import { DEFAULT_BRANDING } from "@/lib/app-settings";

@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useI18n } from "@/lib/i18n";
 import { pageHead } from "@/lib/head";
-import { AppLogo, AppName, useTagline } from "@/components/app-logo";
+import { AppLogo, AppName } from "@/components/app-logo";
+import { useTagline } from "@/lib/branding";
 import { useDemoInfo } from "@/components/demo";
 import { FlaskConical, LogIn } from "lucide-react";
 
