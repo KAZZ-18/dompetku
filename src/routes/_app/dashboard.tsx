@@ -1,70 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { Suspense, useState, useEffect } from "react";
 import {
-  AlertTriangle,
-  ArrowDownRight,
-  ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  PiggyBank,
-  Target,
-  CreditCard,
-  Search,
-  Menu,
-  X,
-  Bell,
-  Settings,
-  User,
-  LogOut,
-  Home,
-  DollarSign,
-  PiggyBank as PiggyBankIcon,
-  CreditCard as CreditCardIcon,
-  TrendingUp as TrendingUpIcon,
-  Calendar,
-  Clock,
-  ChevronDown,
-  DollarSign as DollarSignIcon,
-} from "lucide-react";
-import { PageHeader } from "@/components/app-shell";
-import { RouteError } from "@/components/route-error";
-import { TransactionDialog, newTxDraft, type TxDraft } from "@/components/transaction-dialog";
-import { AssetsOverview } from "@/components/assets-overview";
-import {
-  CashflowAreaChart,
   DonutChart,
+  CashflowAreaChart,
   NetWorthChart,
-  StackedAreaChart,
+  CategoryLineChart,
 } from "@/components/charts";
-import { CHART_PALETTE as PIE } from "@/components/charts/shared";
-import { PENDING_MS, DashboardSkeleton } from "@/components/skeletons";
-import { ReceiptScanner } from "@/components/receipt-scanner";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { dashboardQuery, netWorthQuery } from "@/lib/queries";
-import { currentMonth, dateLabel, monthLabel, shiftMonth, shortMonth, todayStr } from "@/lib/dates";
-import { projectGoal } from "@/lib/goals";
-import { money } from "@/lib/format";
-import { usePrivacy } from "@/lib/privacy";
-import { useI18n } from "@/lib/i18n";
-import { pageHead } from "@/lib/head";
-import { formatPercent, monthChange, previousOf, savingsRate } from "@/lib/ratio";
-import { IncomeRatioCard } from "@/components/income-ratio-card";
-import { PocketWarnings } from "@/components/pocket-warnings";
-import { useAccess } from "@/hooks/use-access";
-import { walletLabel } from "@/lib/permissions";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -76,15 +19,49 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Plus,
+  TrendingUp,
+  TrendingDown,
+  PiggyBank,
+  Wallet,
+  Menu,
+  Calendar,
+  ChevronDown,
+  Bell,
+  Settings,
+  LogOut,
+  User,
+  AlertTriangle,
+  DollarSign,
+  ArrowUpRight,
+  ArrowDownRight,
+  ArrowRight,
+  Target,
+  CreditCard,
+  Banknote,
+  Coins,
+  Trophy,
+} from "lucide-react";
+import { money, compact } from "@/lib/format";
+import { dateLabel, monthLabel, shortMonth } from "@/lib/dates";
+import { walletLabel } from "@/lib/permissions";
+import { useI18n } from "@/lib/i18n";
+import { getDashboard } from "@/lib/finance.functions";
 import { logout } from "@/lib/auth.functions";
-import { format } from "date-fns";
+import { TransactionDialog, newTxDraft } from "@/components/transaction-dialog";
+import { monthChange, formatPercent } from "@/lib/ratio";
+import { usePrivacy } from "@/lib/privacy";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -94,189 +71,687 @@ import {
   CartesianGrid,
   Tooltip as RechartsTooltip,
   Legend,
-  Cell,
   PieChart,
   Pie,
-  LabelList,
+  Cell,
+  LineChart,
+  Line,
 } from "recharts";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export const Route = createFileRoute("/_app/dashboard")({
-  head: () =>
-    pageHead(
-      "Dashboard",
-      "Ringkasan pemasukan, pengeluaran, saldo, hutang, dan pengingat bulan ini.",
-    ),
-  loader: ({ context }) => context.queryClient.ensureQueryData(dashboardQuery(currentMonth())),
-  errorComponent: RouteError,
-  pendingComponent: DashboardSkeleton,
-  pendingMs: PENDING_MS,
-  component: Dashboard,
-});
+const PIE = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+];
 
-function Dashboard() {
-  usePrivacy();
-  const { t, lang } = useI18n();
-  const locale = lang === "en" ? "en-US" : "id-ID";
-  const [month, setMonth] = useState(currentMonth());
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { data: d } = useQuery({ ...dashboardQuery(month), placeholderData: (p) => p });
-  const { data: nw } = useQuery(netWorthQuery(12, month));
-  const { isAdmin, access } = useAccess();
-  const canWrite = isAdmin || Object.values(access.grants).includes("manage");
-  const [dlg, setDlg] = useState<{ open: boolean; draft: TxDraft }>({
-    open: false,
-    draft: newTxDraft(),
+function SkeletonKPI() {
+  return (
+    <Card className="animate-pulse">
+      <CardContent className="pt-6">
+        <div className="h-4 bg-muted rounded w-3/4 mb-4" />
+        <div className="h-8 bg-muted rounded w-1/2" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function SkeletonChart() {
+  return (
+    <Card className="animate-pulse">
+      <CardHeader className="pb-2">
+        <div className="h-5 bg-muted rounded w-1/3" />
+      </CardHeader>
+      <CardContent>
+        <div className="h-[300px] bg-muted rounded" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function SkeletonTable() {
+  return (
+    <Card className="animate-pulse">
+      <CardHeader className="pb-2">
+        <div className="h-5 bg-muted rounded w-1/3" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 h-12">
+              <div className="h-12 w-12 bg-muted rounded-lg" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-muted rounded w-3/4" />
+                <div className="h-3 bg-muted rounded w-1/2" />
+              </div>
+              <div className="h-4 bg-muted rounded w-1/4" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SkeletonDonut() {
+  return (
+    <Card className="animate-pulse">
+      <CardHeader className="pb-2">
+        <div className="h-5 bg-muted rounded w-1/3" />
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col items-center gap-4 h-[320px]">
+          <div className="relative w-full max-w-xs">
+            <div className="aspect-square w-full max-w-xs mx-auto bg-muted rounded-full" />
+          </div>
+          <div className="w-full space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between gap-2 p-2">
+                <div className="flex items-center gap-3">
+                  <div className="size-3 bg-muted rounded-full" />
+                  <div className="h-4 bg-muted rounded w-1/3" />
+                </div>
+                <div className="text-right">
+                  <div className="h-5 bg-muted rounded w-20" />
+                  <div className="h-3 bg-muted rounded w-16 mt-1" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SkeletonReminders() {
+  return (
+    <Card className="animate-pulse">
+      <CardHeader className="pb-2">
+        <div className="h-5 bg-muted rounded w-1/3" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between gap-3 p-3">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="size-10 shrink-0 bg-muted rounded-lg" />
+                <div className="min-w-0">
+                  <div className="h-4 bg-muted rounded w-3/4" />
+                  <div className="h-3 bg-muted rounded w-1/2 mt-1" />
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="h-5 bg-muted rounded w-24" />
+                <div className="h-4 bg-muted rounded w-16 mt-1" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SkeletonBudgets() {
+  return (
+    <Card className="animate-pulse">
+      <CardHeader className="pb-2">
+        <div className="h-5 bg-muted rounded w-1/3" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-3">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="size-3 bg-muted rounded-full" />
+                  <div className="h-4 bg-muted rounded w-1/3" />
+                </div>
+                <div className="h-5 bg-muted rounded w-20 text-right" />
+              </div>
+              <div className="h-2 bg-muted rounded" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SkeletonAccounts() {
+  return (
+    <Card className="animate-pulse">
+      <CardHeader className="pb-2">
+        <div className="h-5 bg-muted rounded w-1/3" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between gap-3 p-3">
+              <div className="flex items-center gap-3">
+                <div className="size-10 shrink-0 bg-muted rounded-lg" />
+                <div>
+                  <div className="h-4 bg-muted rounded w-1/3" />
+                  <div className="h-3 bg-muted rounded w-1/4 mt-1" />
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="h-6 bg-muted rounded w-24 font-mono" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SkeletonGoals() {
+  return (
+    <Card className="animate-pulse">
+      <CardHeader className="pb-2">
+        <div className="h-5 bg-muted rounded w-1/3" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="p-3">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="size-3 bg-muted rounded-full" />
+                  <div className="h-4 bg-muted rounded w-1/3" />
+                </div>
+                <div className="h-5 bg-muted rounded w-20 text-right" />
+              </div>
+              <div className="h-2 bg-muted rounded" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AnimatedNetWorthChart({ data }: { data: any[] }) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id="netWorthGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#16a34a" stopOpacity={0.2} />
+            <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+        <XAxis
+          dataKey="label"
+          tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+          axisLine={{ stroke: "var(--color-border)" }}
+          tickLine={false}
+        />
+        <YAxis
+          tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+          axisLine={false}
+          tickLine={false}
+          tickFormatter={(value) => (value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value)}
+        />
+        <RechartsTooltip
+          contentStyle={{
+            backgroundColor: "var(--color-popover)",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--radius)",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.3)",
+          }}
+          labelStyle={{ color: "var(--color-foreground)", fontWeight: 600 }}
+          itemStyle={{ fontSize: 12 }}
+          formatter={(value: number) => [money(value), ""]}
+        />
+        <Legend wrapperStyle={{ paddingTop: 10 }} iconSize={8} iconType="circle" />
+        <Line
+          type="monotone"
+          dataKey="netWorth"
+          stroke="#16a34a"
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 6 }}
+          name="Nilai Bersih"
+        />
+        <Area
+          type="monotone"
+          dataKey="netWorth"
+          stroke="#16a34a"
+          fillOpacity={1}
+          fill="url(#netWorthGradient)"
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+export default function Dashboard() {
+  const queryClient = useQueryClient();
+  const [d, setD] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [month, setMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
-  const logoutFn = useServerFn(logout);
-  if (!d) return <DashboardSkeleton />;
-  const prev = previousOf<{ income: number; expense: number }>(d.trend);
-  const rate = savingsRate(d.net, d.income);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dlg, setDlg] = useState<{ open: boolean; draft: ReturnType<typeof newTxDraft> }>({
+    open: false,
+    draft: newTxDraft("income"),
+  });
 
-  const netIncome = d.net;
-  const totalExpenses = d.expense;
-  const savingsRatePct = rate !== null ? rate * 100 : 0;
-  const totalInvestments = isAdmin
-    ? d.balances
-        .filter((b: any) => b.type === "investment")
-        .reduce((a: number, b: any) => a + b.balance_idr, 0)
-    : 0;
-  const totalBalance = d.totalBalanceIdr;
+  const isAdmin = true;
+  const { t } = useI18n();
 
-  const sidebarItems = [
-    { icon: Home, label: t("Overview"), href: "/dashboard", active: true },
-    { icon: DollarSignIcon, label: t("Transaksi"), href: "/transactions" },
-    { icon: PiggyBankIcon, label: t("Budget"), href: "/budgets" },
-    { icon: CreditCardIcon, label: t("Akun"), href: "/accounts" },
-    { icon: Target, label: t("Target"), href: "/goals" },
-    { icon: TrendingUpIcon, label: t("Laporan"), href: "/reports" },
-  ];
+  const getDashboardFn = useServerFn(getDashboard);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await getDashboardFn({ data: { month } });
+        if (mounted) {
+          setD(res);
+          setError(null);
+        }
+      } catch (e: any) {
+        if (mounted) setError(e?.message ?? "Gagal memuat data");
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [month, getDashboardFn]);
+
+  if (isLoading) {
+    return (
+      <TooltipProvider>
+        <div className="lg:pl-72 flex flex-col min-h-screen bg-background">
+          <header className="sticky top-0 z-30 h-16 bg-background/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-4 lg:px-8">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Buka menu"
+              >
+                <Menu className="size-5" />
+              </Button>
+              <div className="hidden sm:block">
+                <h1 className="font-display text-xl font-bold">{t("Dashboard")}</h1>
+              </div>
+            </div>
+          </header>
+          <main className="flex-1 p-4 lg:p-6 overflow-x-auto">
+            <div className="max-w-[1400px] mx-auto space-y-6">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 200 }}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+              >
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {t("Selamat datang kembali")}, Admin 👋
+                  </p>
+                  <h2 className="font-display text-2xl lg:text-3xl font-bold mt-1">
+                    {t("Ringkasan Keuangan Bulan Ini")}
+                  </h2>
+                </div>
+                <Button className="gap-2" disabled>
+                  <Plus className="size-4" />
+                  <span>{t("Tambah Transaksi")}</span>
+                </Button>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 200, delay: 50 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+              >
+                <SkeletonKPI />
+                <SkeletonKPI />
+                <SkeletonKPI />
+                <SkeletonKPI />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 200, delay: 100 }}
+                className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6"
+              >
+                <ChartCard title={t("Arus Kas 6 Bulan")} subtitle={t("6 bulan terakhir")}>
+                  <div className="h-[560px] short:h-[420px]">
+                    <SkeletonChart />
+                  </div>
+                </ChartCard>
+                <div className="space-y-4">
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 150 }}
+                  >
+                    <SkeletonDonut />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 200 }}
+                  >
+                    <SkeletonChart />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 250 }}
+                  >
+                    <SkeletonTable />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 300 }}
+                  >
+                    <SkeletonReminders />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 350 }}
+                  >
+                    <SkeletonBudgets />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 400 }}
+                  >
+                    <SkeletonAccounts />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 450 }}
+                  >
+                    <SkeletonGoals />
+                  </motion.div>
+                </div>
+              </motion.div>
+            </div>
+          </main>
+        </div>
+      </TooltipProvider>
+    );
+  }
+
+  if (error) {
+    return (
+      <TooltipProvider>
+        <div className="lg:pl-72 flex flex-col min-h-screen bg-background">
+          <header className="sticky top-0 z-30 h-16 bg-background/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-4 lg:px-8">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Buka menu"
+              >
+                <Menu className="size-5" />
+              </Button>
+              <div className="hidden sm:block">
+                <h1 className="font-display text-xl font-bold">{t("Dashboard")}</h1>
+              </div>
+            </div>
+          </header>
+          <main className="flex-1 p-4 lg:p-6 overflow-x-auto">
+            <div className="max-w-[1400px] mx-auto space-y-6">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 200 }}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+              >
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {t("Selamat datang kembali")}, Admin 👋
+                  </p>
+                  <h2 className="font-display text-2xl lg:text-3xl font-bold mt-1">
+                    {t("Ringkasan Keuangan Bulan Ini")}
+                  </h2>
+                </div>
+                <Button
+                  className="gap-2"
+                  onClick={() => setDlg({ open: true, draft: newTxDraft("income") })}
+                >
+                  <Plus className="size-4" />
+                  <span>{t("Tambah Transaksi")}</span>
+                </Button>
+              </motion.div>
+              <Card className="border-destructive/50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+                    <AlertTriangle className="size-6 text-destructive shrink-0" />
+                    <div>
+                      <p className="font-medium text-destructive">{t("Gagal memuat dashboard")}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{error}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        queryClient.invalidateQueries({ queryKey: ["dashboard", month] })
+                      }
+                    >
+                      <ArrowRight className="size-4 mr-2" />
+                      {t("Coba lagi")}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </main>
+        </div>
+      </TooltipProvider>
+    );
+  }
+
+  const netIncome = (d?.income ?? 0) - (d?.expense ?? 0);
+  const totalExpenses = d?.expense ?? 0;
+  const totalBalance = d?.accounts?.reduce((sum: number, a: any) => sum + (a.balance ?? 0), 0) ?? 0;
+  const totalInvestments =
+    d?.investments?.reduce((sum: number, inv: any) => sum + (inv.current_value ?? 0), 0) ?? 0;
+  const savingsRatePct = d?.income ? (netIncome / d.income) * 100 : 0;
+  const prev = d?.previousMonth;
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background text-foreground transition-colors duration-150">
-        {/* Mobile sidebar overlay */}
-        <AnimatePresence>
-          {sidebarOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 150 }}
-              className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-              onClick={() => setSidebarOpen(false)}
-              aria-hidden="true"
-            />
-          )}
-        </AnimatePresence>
-
-        {/* Sidebar */}
+      <div className="lg:pl-72 flex flex-col min-h-screen bg-background">
         <motion.aside
-          initial={{ x: -280 }}
-          animate={{ x: sidebarOpen ? 0 : -280 }}
-          transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="fixed left-0 top-0 z-50 h-screen w-72 bg-background border-r border-border flex flex-col lg:translate-x-0"
+          initial={{ x: -300, opacity: 0 }}
+          animate={{ x: sidebarOpen ? 0 : -300, opacity: sidebarOpen ? 1 : 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className={`fixed inset-y-0 left-0 z-50 w-72 bg-card border-r border-border flex flex-col transition-transform duration-300 lg:translate-x-0 lg:opacity-100 ${sidebarOpen ? "translate-x-0 opacity-100" : "translate-x-[-300px] opacity-0 pointer-events-none"}`}
+          aria-label="Navigasi sidebar"
         >
           <div className="flex h-16 items-center justify-between px-4 border-b border-border">
             <Link
               to="/dashboard"
-              className="flex items-center gap-2.5 font-display text-xl font-bold"
+              className="flex items-center gap-2 font-display text-xl font-bold"
+              onClick={() => setSidebarOpen(false)}
             >
-              <svg
-                className="size-8 text-primary"
-                viewBox="0 0 32 32"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <rect width="32" height="32" rx="8" fill="currentColor" />
-                <path
-                  d="M8 16L14 22L24 10"
-                  stroke="white"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="truncate">Dompetku</span>
+              <img
+                src="/logo.svg"
+                alt=""
+                aria-hidden="true"
+                width="28"
+                height="28"
+                className="shrink-0 rounded-[22%] object-contain size-7"
+              />
+              <span className="truncate">
+                Dompetku<span className="text-primary">.</span>
+              </span>
             </Link>
             <Button
               variant="ghost"
               size="icon"
               className="lg:hidden"
               onClick={() => setSidebarOpen(false)}
-              aria-label="Tutup sidebar"
+              aria-label="Tutup menu"
             >
-              <X className="size-4" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-x size-5"
+              >
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
             </Button>
           </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input placeholder={t("Cari cepat...")} className="pl-9 bg-muted border-border" />
-            </div>
-
-            {/* Navigation */}
-            <nav className="space-y-1" aria-label="Navigasi utama">
-              {sidebarItems.map((item) => (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                    item.active
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <item.icon className="size-5 shrink-0" aria-hidden="true" />
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-
-            <Separator className="my-2" />
-
-            {/* Quick Actions */}
-            <div className="space-y-2">
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("Aksi Cepat")}
-              </p>
-              {canWrite && (
-                <>
-                  <Button
-                    variant="default"
-                    className="w-full justify-start gap-3"
-                    onClick={() => setDlg({ open: true, draft: newTxDraft("income") })}
-                  >
-                    <Plus className="size-4" />
-                    <span>{t("Pemasukan")}</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start gap-3"
-                    onClick={() => setDlg({ open: true, draft: newTxDraft("expense") })}
-                  >
-                    <Plus className="size-4" />
-                    <span>{t("Pengeluaran")}</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start gap-3"
-                    onClick={() => setDlg({ open: true, draft: newTxDraft("transfer") })}
-                  >
-                    <ArrowUpRight className="size-4" />
-                    <span>{t("Transfer")}</span>
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* User Profile */}
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto" aria-label="Menu utama">
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-150"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-layout-dashboard size-5"
+              >
+                <rect width="7" height="9" x="3" y="3" rx="1"></rect>
+                <rect width="7" height="5" x="14" y="3" rx="1"></rect>
+                <rect width="7" height="9" x="14" y="14" rx="1"></rect>
+                <rect width="7" height="5" x="3" y="16" rx="1"></rect>
+              </svg>
+              {t("Dashboard")}
+            </Link>
+            <Link
+              to="/transactions"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-150"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-list size-5"
+              >
+                <path d="M3 12h18"></path>
+                <path d="M3 6h18"></path>
+                <path d="M3 18h18"></path>
+              </svg>
+              {t("Transaksi")}
+            </Link>
+            <Link
+              to="/reports"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-150"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-bar-chart-2 size-5"
+              >
+                <path d="M18 20V10"></path>
+                <path d="M12 20V4"></path>
+                <path d="M6 20v-6"></path>
+              </svg>
+              {t("Laporan")}
+            </Link>
+            <Link
+              to="/budgets"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-150"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <Target className="size-5" />
+              {t("Anggaran")}
+            </Link>
+            <Link
+              to="/reminders"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-150"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <Bell className="size-5" />
+              {t("Pengingat")}
+            </Link>
+            <Link
+              to="/accounts"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-150"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <CreditCard className="size-5" />
+              {t("Rekening")}
+            </Link>
+            <Link
+              to="/investments"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-150"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <Coins className="size-5" />
+              {t("Investasi")}
+            </Link>
+            <Link
+              to="/goals"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-150"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <Trophy className="size-5" />
+              {t("Target Tabungan")}
+            </Link>
+            <Link
+              to="/settings"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-150"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <Settings className="size-5" />
+              {t("Pengaturan")}
+            </Link>
+          </nav>
           <div className="p-4 border-t border-border">
-            <div className="flex items-center gap-3 px-2 py-2 rounded-lg bg-muted">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
               <Avatar className="size-10">
                 <AvatarImage src="/logo.svg" alt="" />
                 <AvatarFallback className="bg-primary text-primary-foreground font-display font-bold">
@@ -291,11 +766,24 @@ function Dashboard() {
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="flex-1 justify-start gap-2 px-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="flex-1 justify-start gap-2 px-3"
+                onClick={() => setSidebarOpen(false)}
+              >
                 <Settings className="size-4" />
                 <span className="text-sm">{t("Pengaturan")}</span>
               </Button>
-              <Button variant="ghost" size="icon" className="flex-1 justify-start gap-2 px-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="flex-1 justify-start gap-2 px-3"
+                onClick={async () => {
+                  await logout();
+                  window.location.href = "/login";
+                }}
+              >
                 <LogOut className="size-4" />
                 <span className="text-sm">{t("Keluar")}</span>
               </Button>
@@ -303,9 +791,18 @@ function Dashboard() {
           </div>
         </motion.aside>
 
-        {/* Main Content */}
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         <div className="lg:pl-72 flex flex-col min-h-screen">
-          {/* Top Bar */}
           <header className="sticky top-0 z-30 h-16 bg-background/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-4 lg:px-8">
             <div className="flex items-center gap-4">
               <Button
@@ -335,7 +832,7 @@ function Dashboard() {
                     const m = `2025-${String(i + 1).padStart(2, "0")}`;
                     return (
                       <option key={m} value={m}>
-                        {monthLabel(m, locale)}
+                        {monthLabel(m, "id-ID")}
                       </option>
                     );
                   })}
@@ -347,7 +844,7 @@ function Dashboard() {
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="size-5" />
-                    {d.reminders.length > 0 && (
+                    {d?.reminders?.length > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 size-3.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
                         {d.reminders.length > 9 ? "9+" : d.reminders.length}
                       </span>
@@ -359,7 +856,7 @@ function Dashboard() {
                     <p className="font-semibold">{t("Pengingat")}</p>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
-                    {d.reminders.length ? (
+                    {d?.reminders?.length ? (
                       d.reminders.map((r: any) => (
                         <div
                           key={r.type + r.id}
@@ -373,7 +870,7 @@ function Dashboard() {
                                 ? `${t("Terlambat")} ${-r.days_left} ${t("hari")}`
                                 : r.days_left === 0
                                   ? t("Hari ini")
-                                  : `${r.days_left} ${t("hari lagi")} · ${dateLabel(r.due_date, locale)}`}
+                                  : `${r.days_left} ${t("hari lagi")} · ${dateLabel(r.due_date, "id-ID")}`}
                           </p>
                         </div>
                       ))
@@ -422,10 +919,10 @@ function Dashboard() {
                           {t("Profil")}
                         </Link>
                       </DropdownMenuItem>
-                      <Separator />
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={async () => {
-                          await logoutFn();
+                          await logout();
                           window.location.href = "/login";
                         }}
                         className="text-destructive focus:text-destructive"
@@ -440,10 +937,8 @@ function Dashboard() {
             </div>
           </header>
 
-          {/* Page Content */}
           <main className="flex-1 p-4 lg:p-6 overflow-x-auto">
             <div className="max-w-[1400px] mx-auto space-y-6">
-              {/* Welcome Header */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -467,7 +962,6 @@ function Dashboard() {
                 </Button>
               </motion.div>
 
-              {/* KPI Cards Row - Monochrome with semantic accents only */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -512,16 +1006,14 @@ function Dashboard() {
                 />
               </motion.div>
 
-              {/* Middle Row: Charts */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 200, delay: 100 }}
                 className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6"
               >
-                {/* Earning Status Chart */}
                 <ChartCard
-                  title={t("Status Pendapatan")}
+                  title={t("Arus Kas 6 Bulan")}
                   subtitle={t("6 bulan terakhir")}
                   action={
                     <Select value={month} onValueChange={setMonth}>
@@ -533,7 +1025,7 @@ function Dashboard() {
                           const m = `2025-${String(i + 1).padStart(2, "0")}`;
                           return (
                             <SelectItem key={m} value={m}>
-                              {monthLabel(m, locale)}
+                              {monthLabel(m, "id-ID")}
                             </SelectItem>
                           );
                         })}
@@ -541,278 +1033,517 @@ function Dashboard() {
                     </Select>
                   }
                 >
-                  <div className="h-[320px] short:h-[260px]">
-                    <AnimatedCashflowChart
-                      data={d.trend.map((t: any) => ({ ...t, label: shortMonth(t.month, locale) }))}
+                  <div className="h-[560px] short:h-[420px]">
+                    <CashflowAreaChart
+                      data={
+                        d?.trend?.map((t: any) => ({
+                          ...t,
+                          label: shortMonth(t.month, "id-ID"),
+                        })) ?? []
+                      }
                       incomeLabel={t("Pemasukan")}
                       expenseLabel={t("Pengeluaran")}
                     />
                   </div>
                 </ChartCard>
 
-                {/* Upcoming Bills / Reminders */}
-                <motion.div
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 200, delay: 150 }}
-                  className="space-y-4"
-                >
-                  <ChartCard
-                    title={t("Tagihan Mendatang")}
-                    subtitle={t("14 hari ke depan")}
-                    action={
-                      <Link to="/reminders" className="text-xs text-primary hover:underline">
-                        {t("Lihat semua")}
-                      </Link>
-                    }
+                <div className="space-y-4">
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 150 }}
                   >
-                    <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                      {d.reminders.length ? (
-                        d.reminders.map((r: any, i: number) => (
-                          <motion.div
-                            key={r.type + r.id}
-                            initial={{ opacity: 0, x: 10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 150, delay: i * 30 }}
-                            className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted border border-border hover:border-primary/50 transition-colors duration-150"
-                          >
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className="size-10 shrink-0 rounded-lg bg-card flex items-center justify-center border border-border">
-                                <AlertTriangle className="size-5 text-destructive" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium truncate">{r.title}</p>
-                                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Calendar className="size-3" />
-                                  {r.type === "budget"
-                                    ? t("Peringatan budget")
-                                    : r.overdue
-                                      ? `${t("Terlambat")} ${-r.days_left} ${t("hari")}`
-                                      : r.days_left === 0
-                                        ? t("Hari ini")
-                                        : `${r.days_left} ${t("hari lagi")} · ${dateLabel(r.due_date, locale)}`}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-mono tabular-nums font-medium text-destructive">
-                                {money(r.amount, r.currency)}
+                    <ChartCard title={t("Pengeluaran per Kategori")} subtitle={t("Bulan ini")}>
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="relative w-full max-w-xs">
+                          <DonutChart
+                            data={
+                              d?.byCategory?.map((c: any, i: number) => ({
+                                name: c.name,
+                                value: c.value,
+                                color: c.color ?? PIE[i % PIE.length],
+                              })) ?? []
+                            }
+                            innerRadius={50}
+                            outerRadius={80}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-center">
+                              <p className="font-display text-2xl font-bold tabular-nums">
+                                {money(d?.expense ?? 0)}
                               </p>
-                              <span
-                                className={`text-xs font-medium px-2 py-0.5 rounded ${
-                                  r.overdue
-                                    ? "bg-destructive/10 text-destructive"
-                                    : r.days_left <= 3
-                                      ? "bg-warning/10 text-warning"
-                                      : "bg-muted-foreground/10 text-muted-foreground"
-                                }`}
-                              >
-                                {r.overdue
-                                  ? t("Terlambat")
-                                  : r.days_left <= 3
-                                    ? t("Segera")
-                                    : t("Dijadwalkan")}
-                              </span>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {t("Total Pengeluaran")}
+                              </p>
                             </div>
-                          </motion.div>
-                        ))
-                      ) : (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="py-8 text-center text-sm text-muted-foreground"
-                        >
-                          {t("Tidak ada tagihan 14 hari ke depan.")}
-                        </motion.div>
-                      )}
-                    </div>
-                  </ChartCard>
-                </motion.div>
-              </motion.div>
-
-              {/* Bottom Row: Transactions + Spending */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 200, delay: 150 }}
-                className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6"
-              >
-                {/* Recent Transactions */}
-                <ChartCard
-                  title={t("Transaksi Terbaru")}
-                  subtitle={t("10 transaksi terakhir")}
-                  action={
-                    <Link to="/transactions" className="text-xs text-primary hover:underline">
-                      {t("Lihat semua")}
-                    </Link>
-                  }
-                >
-                  <ScrollArea className="h-[420px] short:h-[360px]">
-                    {d.recent.length ? (
-                      <table className="w-full text-sm" role="table">
-                        <thead>
-                          <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                            <th className="pb-3 pr-4">{t("Merchant")}</th>
-                            <th className="pb-3 pr-4 text-center">{t("Tanggal")}</th>
-                            <th className="pb-3 pr-4 text-center">{t("Akun")}</th>
-                            <th className="pb-3 pr-4 text-center">{t("Tipe")}</th>
-                            <th className="pb-3 pr-4 text-right">{t("Jumlah")}</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/50">
-                          {d.recent.map((tx: any, i: number) => (
-                            <motion.tr
-                              key={tx.id}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ duration: 150, delay: i * 20 }}
-                              className="hover:bg-muted transition-colors duration-150"
-                            >
-                              <td className="py-3 pr-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="size-9 shrink-0 rounded-lg bg-card flex items-center justify-center border border-border">
-                                    {tx.category ? (
-                                      <span
-                                        className="size-2.5 rounded-full"
-                                        style={{ background: tx.category.color }}
-                                      />
-                                    ) : (
-                                      <DollarSign className="size-4 text-muted-foreground" />
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="font-medium truncate max-w-[200px]">
-                                      {tx.description ||
-                                        tx.merchant ||
-                                        tx.category?.name ||
-                                        "Transaksi"}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {tx.category?.name || "-"}
-                                    </p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="py-3 pr-4 text-center text-xs text-muted-foreground">
-                                {dateLabel(tx.occurred_at, locale)}
-                              </td>
-                              <td className="py-3 pr-4 text-center text-xs">
-                                {tx.account ? walletLabel(tx.account, t) : "-"}
-                              </td>
-                              <td className="py-3 pr-4 text-center">
-                                <span
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                                    tx.kind === "income"
-                                      ? "bg-green-500/10 text-green-500"
-                                      : tx.kind === "expense"
-                                        ? "bg-red-500/10 text-red-500"
-                                        : "bg-primary/10 text-primary"
-                                  }`}
-                                >
-                                  {tx.kind === "income" && <ArrowUpRight className="size-3" />}
-                                  {tx.kind === "expense" && <ArrowDownRight className="size-3" />}
-                                  {tx.kind === "transfer" && <ArrowUpRight className="size-3" />}
-                                  {t(
-                                    tx.kind === "income"
-                                      ? "Masuk"
-                                      : tx.kind === "expense"
-                                        ? "Keluar"
-                                        : "Transfer",
-                                  )}
-                                </span>
-                              </td>
-                              <td className="py-3 pr-4 text-right font-mono tabular-nums font-medium">
-                                <span
-                                  className={
-                                    tx.kind === "income"
-                                      ? "text-green-500"
-                                      : tx.kind === "expense"
-                                        ? "text-red-500"
-                                        : "text-primary"
-                                  }
-                                >
-                                  {tx.kind === "income" ? "+" : tx.kind === "expense" ? "−" : ""}
-                                  {money(tx.amount, tx.currency)}
-                                </span>
-                              </td>
-                            </motion.tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="py-12 text-center text-sm text-muted-foreground"
-                      >
-                        {t("Belum ada transaksi. Mulai catat sekarang!")}
-                      </motion.div>
-                    )}
-                  </ScrollArea>
-                </ChartCard>
-
-                {/* Spending Donut Chart */}
-                <motion.div
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 200, delay: 200 }}
-                  className="space-y-4"
-                >
-                  <ChartCard title={t("Pengeluaran per Kategori")} subtitle={t("Bulan ini")}>
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="relative w-full max-w-xs">
-                        <AnimatedDonutChart
-                          data={d.byCategory.map((c: any, i: number) => ({
-                            name: c.name,
-                            value: c.value,
-                            color: c.color ?? PIE[i % PIE.length],
-                          }))}
-                          innerRadius={50}
-                          outerRadius={80}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="text-center">
-                            <p className="font-display text-2xl font-bold tabular-nums">
-                              {money(d.expense)}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {t("Total Pengeluaran")}
-                            </p>
                           </div>
                         </div>
+                        <div className="w-full space-y-2">
+                          {d?.byCategory?.slice(0, 6).map((c: any, i: number) => (
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 150, delay: i * 30 }}
+                              className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted transition-colors duration-150"
+                            >
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <span
+                                  className="size-3 shrink-0 rounded-full"
+                                  style={{ background: c.color ?? PIE[i % PIE.length] }}
+                                />
+                                <span className="truncate text-sm font-medium">{c.name}</span>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="font-mono tabular-nums font-medium text-sm">
+                                  {money(c.value)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {d?.expense > 0
+                                    ? `${((c.value / d.expense) * 100).toFixed(1)}%`
+                                    : "0%"}
+                                </p>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="w-full space-y-2">
-                        {d.byCategory.slice(0, 6).map((c: any, i: number) => (
+                    </ChartCard>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 200 }}
+                  >
+                    <ChartCard
+                      title={t("Nilai Bersih")}
+                      subtitle={t("Tren 6 bulan")}
+                      action={
+                        <Link to="/reports" className="text-xs text-primary hover:underline">
+                          {t("Lihat detail")}
+                        </Link>
+                      }
+                    >
+                      <div className="h-[280px]">
+                        <AnimatedNetWorthChart
+                          data={
+                            d?.netWorthTrend?.map((t: any) => ({
+                              ...t,
+                              label: shortMonth(t.month, "id-ID"),
+                            })) ?? []
+                          }
+                        />
+                      </div>
+                    </ChartCard>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 250 }}
+                  >
+                    <ChartCard
+                      title={t("Transaksi Terbaru")}
+                      subtitle={t("10 transaksi terakhir")}
+                      action={
+                        <Link to="/transactions" className="text-xs text-primary hover:underline">
+                          {t("Lihat semua")}
+                        </Link>
+                      }
+                    >
+                      <ScrollArea className="h-[380px] short:h-[320px]">
+                        {d?.recent?.length ? (
+                          <table className="w-full text-sm" role="table">
+                            <thead>
+                              <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                <th className="pb-3 pr-4">{t("Merchant")}</th>
+                                <th className="pb-3 pr-4 text-center">{t("Tanggal")}</th>
+                                <th className="pb-3 pr-4 text-center">{t("Akun")}</th>
+                                <th className="pb-3 pr-4 text-center">{t("Tipe")}</th>
+                                <th className="pb-3 pr-4 text-right">{t("Jumlah")}</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/50">
+                              {d.recent.map((tx: any, i: number) => (
+                                <motion.tr
+                                  key={tx.id}
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ duration: 150, delay: i * 20 }}
+                                  className="hover:bg-muted transition-colors duration-150"
+                                >
+                                  <td className="py-3 pr-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="size-9 shrink-0 rounded-lg bg-card flex items-center justify-center border border-border">
+                                        {tx.category ? (
+                                          <span
+                                            className="size-2.5 rounded-full"
+                                            style={{ background: tx.category.color }}
+                                          />
+                                        ) : (
+                                          <DollarSign className="size-4 text-muted-foreground" />
+                                        )}
+                                      </div>
+                                      <div>
+                                        <p className="font-medium truncate max-w-[200px]">
+                                          {tx.description ||
+                                            tx.merchant ||
+                                            tx.category?.name ||
+                                            "Transaksi"}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {tx.category?.name || "-"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 pr-4 text-center text-xs text-muted-foreground">
+                                    {dateLabel(tx.occurred_at, "id-ID")}
+                                  </td>
+                                  <td className="py-3 pr-4 text-center text-xs">
+                                    {tx.account ? walletLabel(tx.account, t) : "-"}
+                                  </td>
+                                  <td className="py-3 pr-4 text-center">
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${tx.kind === "income" ? "bg-green-500/10 text-green-500" : tx.kind === "expense" ? "bg-red-500/10 text-red-500" : "bg-primary/10 text-primary"}`}
+                                    >
+                                      {tx.kind === "income" && <ArrowUpRight className="size-3" />}
+                                      {tx.kind === "expense" && (
+                                        <ArrowDownRight className="size-3" />
+                                      )}
+                                      {tx.kind === "transfer" && <ArrowRight className="size-3" />}
+                                      {t(
+                                        tx.kind === "income"
+                                          ? "Masuk"
+                                          : tx.kind === "expense"
+                                            ? "Keluar"
+                                            : "Transfer",
+                                      )}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 pr-4 text-right font-mono tabular-nums font-medium">
+                                    <span
+                                      className={
+                                        tx.kind === "income"
+                                          ? "text-green-500"
+                                          : tx.kind === "expense"
+                                            ? "text-red-500"
+                                            : "text-primary"
+                                      }
+                                    >
+                                      {tx.kind === "income"
+                                        ? "+"
+                                        : tx.kind === "expense"
+                                          ? "−"
+                                          : ""}
+                                      {money(tx.amount, tx.currency)}
+                                    </span>
+                                  </td>
+                                </motion.tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
                           <motion.div
-                            key={i}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 150, delay: i * 30 }}
-                            className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-muted transition-colors duration-150"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="py-12 text-center text-sm text-muted-foreground"
                           >
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <span
-                                className="size-3 shrink-0 rounded-full"
-                                style={{ background: c.color ?? PIE[i % PIE.length] }}
-                              />
-                              <span className="truncate text-sm font-medium">{c.name}</span>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <p className="font-mono tabular-nums font-medium text-sm">
-                                {money(c.value)}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {d.expense > 0
-                                  ? `${((c.value / d.expense) * 100).toFixed(1)}%`
-                                  : "0%"}
-                              </p>
-                            </div>
+                            {t("Belum ada transaksi. Mulai catat sekarang!")}
                           </motion.div>
-                        ))}
+                        )}
+                      </ScrollArea>
+                    </ChartCard>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 300 }}
+                  >
+                    <ChartCard
+                      title={t("Pengingat")}
+                      subtitle={t("14 hari ke depan")}
+                      action={
+                        <Link to="/reminders" className="text-xs text-primary hover:underline">
+                          {t("Lihat semua")}
+                        </Link>
+                      }
+                    >
+                      <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                        {d?.reminders?.length ? (
+                          d.reminders.map((r: any, i: number) => (
+                            <motion.div
+                              key={r.type + r.id}
+                              initial={{ opacity: 0, x: 10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 150, delay: i * 30 }}
+                              className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted border border-border hover:border-primary/50 transition-colors duration-150"
+                            >
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className="size-10 shrink-0 rounded-lg bg-card flex items-center justify-center border border-border">
+                                  <AlertTriangle className="size-5 text-destructive" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium truncate">{r.title}</p>
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Calendar className="size-3" />
+                                    {r.type === "budget"
+                                      ? t("Peringatan budget")
+                                      : r.overdue
+                                        ? `${t("Terlambat")} ${-r.days_left} ${t("hari")}`
+                                        : r.days_left === 0
+                                          ? t("Hari ini")
+                                          : `${r.days_left} ${t("hari lagi")} · ${dateLabel(r.due_date, "id-ID")}`}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-mono tabular-nums font-medium text-destructive">
+                                  {money(r.amount, r.currency)}
+                                </p>
+                                <span
+                                  className={`text-xs font-medium px-2 py-0.5 rounded ${r.overdue ? "bg-destructive/10 text-destructive" : r.days_left <= 3 ? "bg-warning/10 text-warning" : "bg-muted-foreground/10 text-muted-foreground"}`}
+                                >
+                                  {r.overdue
+                                    ? t("Terlambat")
+                                    : r.days_left <= 3
+                                      ? t("Segera")
+                                      : t("Dijadwalkan")}
+                                </span>
+                              </div>
+                            </motion.div>
+                          ))
+                        ) : (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="py-8 text-center text-sm text-muted-foreground"
+                          >
+                            {t("Tidak ada tagihan 14 hari ke depan.")}
+                          </motion.div>
+                        )}
                       </div>
-                    </div>
-                  </ChartCard>
-                </motion.div>
+                    </ChartCard>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 350 }}
+                  >
+                    <ChartCard
+                      title={t("Anggaran Bulan Ini")}
+                      subtitle={t("Kemajuan real-time")}
+                      action={
+                        <Link to="/budgets" className="text-xs text-primary hover:underline">
+                          {t("Kelola")}
+                        </Link>
+                      }
+                    >
+                      <div className="space-y-3">
+                        {d?.budgets?.length ? (
+                          d.budgets.map((b: any, i: number) => (
+                            <motion.div
+                              key={b.id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 150, delay: i * 30 }}
+                              className="p-3"
+                            >
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="size-3 shrink-0 rounded-full"
+                                    style={{ background: b.category?.color ?? PIE[i % PIE.length] }}
+                                  />
+                                  <span className="font-medium truncate max-w-[140px]">
+                                    {b.category?.name ?? t("Anggaran")}
+                                  </span>
+                                </div>
+                                <span className="font-mono tabular-nums text-sm font-medium text-right shrink-0">
+                                  {money(b.spent ?? 0)} / {money(b.limit ?? 0)}
+                                </span>
+                              </div>
+                              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{
+                                    width: `${Math.min(100, ((b.spent ?? 0) / (b.limit ?? 1)) * 100)}%`,
+                                  }}
+                                  transition={{
+                                    type: "spring",
+                                    stiffness: 200,
+                                    damping: 20,
+                                    delay: 0.1,
+                                  }}
+                                  className={`h-full rounded-full transition-colors duration-300 ${(b.spent ?? 0) >= (b.limit ?? 0) ? "bg-destructive" : (b.spent ?? 0) >= (b.limit ?? 0) * 0.8 ? "bg-warning" : "bg-primary"}`}
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 text-right">
+                                {(((b.spent ?? 0) / (b.limit ?? 1)) * 100).toFixed(0)}%{" "}
+                                {t("terpakai")}
+                              </p>
+                            </motion.div>
+                          ))
+                        ) : (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="py-8 text-center text-sm text-muted-foreground"
+                          >
+                            {t("Belum ada budget. Buat yang pertama!")}
+                          </motion.div>
+                        )}
+                      </div>
+                    </ChartCard>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 400 }}
+                  >
+                    <ChartCard
+                      title={t("Saldo Rekening")}
+                      subtitle={t("Semua akun")}
+                      action={
+                        <Link to="/accounts" className="text-xs text-primary hover:underline">
+                          {t("Kelola")}
+                        </Link>
+                      }
+                    >
+                      <div className="space-y-2">
+                        {d?.accounts?.length ? (
+                          d.accounts.map((a: any, i: number) => (
+                            <motion.div
+                              key={a.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 150, delay: i * 30 }}
+                              className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-muted transition-colors duration-150"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="size-10 shrink-0 rounded-lg bg-card flex items-center justify-center border border-border">
+                                  {a.icon ? (
+                                    <img src={a.icon} alt="" className="size-5" />
+                                  ) : a.type === "cash" ? (
+                                    <Banknote className="size-5 text-muted-foreground" />
+                                  ) : a.type === "bank" ? (
+                                    <CreditCard className="size-5 text-muted-foreground" />
+                                  ) : (
+                                    <Coins className="size-5 text-muted-foreground" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium truncate">{a.name}</p>
+                                  <p className="text-xs text-muted-foreground capitalize">
+                                    {a.type}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="font-mono tabular-nums font-medium">
+                                  {money(a.balance ?? 0, a.currency)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {a.type === "investment"
+                                    ? t("Investasi")
+                                    : a.type === "savings"
+                                      ? t("Tabungan")
+                                      : t("Transaksi")}
+                                </p>
+                              </div>
+                            </motion.div>
+                          ))
+                        ) : (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="py-8 text-center text-sm text-muted-foreground"
+                          >
+                            {t("Belum ada rekening. Tambah yang pertama!")}
+                          </motion.div>
+                        )}
+                      </div>
+                    </ChartCard>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 200, delay: 450 }}
+                  >
+                    <ChartCard
+                      title={t("Target Tabungan")}
+                      subtitle={t("Kemajuan menuju tujuan")}
+                      action={
+                        <Link to="/goals" className="text-xs text-primary hover:underline">
+                          {t("Kelola")}
+                        </Link>
+                      }
+                    >
+                      <div className="space-y-3">
+                        {d?.goals?.length ? (
+                          d.goals.map((g: any, i: number) => (
+                            <motion.div
+                              key={g.id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 150, delay: i * 30 }}
+                              className="p-3"
+                            >
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="size-3 shrink-0 rounded-full"
+                                    style={{ background: g.color ?? PIE[i % PIE.length] }}
+                                  />
+                                  <span className="font-medium truncate max-w-[140px]">
+                                    {g.name}
+                                  </span>
+                                </div>
+                                <span className="font-mono tabular-nums text-sm font-medium text-right shrink-0">
+                                  {money(g.current ?? 0)} / {money(g.target ?? 0)}
+                                </span>
+                              </div>
+                              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{
+                                    width: `${Math.min(100, ((g.current ?? 0) / (g.target ?? 1)) * 100)}%`,
+                                  }}
+                                  transition={{
+                                    type: "spring",
+                                    stiffness: 200,
+                                    damping: 20,
+                                    delay: 0.1,
+                                  }}
+                                  className={`h-full rounded-full transition-colors duration-300 ${(g.current ?? 0) >= (g.target ?? 0) ? "bg-income" : "bg-primary"}`}
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 text-right">
+                                {(((g.current ?? 0) / (g.target ?? 1)) * 100).toFixed(0)}%{" "}
+                                {t("tercapai")}
+                                {g.target_date &&
+                                  ` · ${t("Target")} ${dateLabel(g.target_date, "id-ID")}`}
+                              </p>
+                            </motion.div>
+                          ))
+                        ) : (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="py-8 text-center text-sm text-muted-foreground"
+                          >
+                            {t("Belum ada target tabungan. Mulai yang pertama!")}
+                          </motion.div>
+                        )}
+                      </div>
+                    </ChartCard>
+                  </motion.div>
+                </div>
               </motion.div>
             </div>
           </main>
@@ -820,7 +1551,7 @@ function Dashboard() {
 
         <TransactionDialog
           open={dlg.open}
-          onOpenChange={(o) => setDlg((s) => ({ ...s, open: o }))}
+          onOpenChange={(o: boolean) => setDlg((s) => ({ ...s, open: o }))}
           initial={dlg.draft}
         />
       </div>
@@ -845,13 +1576,6 @@ function KPICard({ title, value, icon, trend, color }: KPICardProps) {
     expense: "text-red-500",
     warning: "text-yellow-500",
     primary: "text-primary",
-  };
-
-  const trendColors = {
-    income: { good: "text-green-500", bad: "text-red-500" },
-    expense: { good: "text-green-500", bad: "text-red-500" },
-    warning: { good: "text-green-500", bad: "text-red-500" },
-    primary: { good: "text-green-500", bad: "text-red-500" },
   };
 
   return (
@@ -881,13 +1605,15 @@ function KPICard({ title, value, icon, trend, color }: KPICardProps) {
   );
 }
 
-interface MonthDeltaProps {
+function MonthDelta({
+  current,
+  previous,
+  goodWhenUp,
+}: {
   current: number;
   previous: number | undefined;
   goodWhenUp: boolean;
-}
-
-function MonthDelta({ current, previous, goodWhenUp }: MonthDeltaProps) {
+}) {
   const { t } = useI18n();
   const pct = monthChange(current, previous);
   if (pct === null)
@@ -927,134 +1653,6 @@ function ChartCard({ title, subtitle, action, children }: ChartCardProps) {
       </div>
       {children}
     </Card>
-  );
-}
-
-/* Animated Charts using Motion + Recharts - Monochrome with green/red semantic colors */
-function AnimatedCashflowChart({
-  data,
-  incomeLabel,
-  expenseLabel,
-}: {
-  data: any[];
-  incomeLabel: string;
-  expenseLabel: string;
-}) {
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#16a34a" stopOpacity={0.2} />
-            <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
-          </linearGradient>
-          <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
-            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-        <XAxis
-          dataKey="label"
-          tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
-          axisLine={{ stroke: "var(--color-border)" }}
-          tickLine={false}
-        />
-        <YAxis
-          tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
-          axisLine={false}
-          tickLine={false}
-          tickFormatter={(value) => (value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value)}
-        />
-        <RechartsTooltip
-          contentStyle={{
-            backgroundColor: "var(--color-popover)",
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius)",
-            boxShadow: "0 10px 40px rgba(0,0,0,0.3)",
-          }}
-          labelStyle={{ color: "var(--color-foreground)", fontWeight: 600 }}
-          itemStyle={{ fontSize: 12 }}
-          formatter={(value: number) => [money(value), ""]}
-        />
-        <Legend
-          wrapperStyle={{ paddingTop: 10 }}
-          iconSize={8}
-          iconType="circle"
-          formatter={(value) => (
-            <span style={{ color: value === incomeLabel ? "#16a34a" : "#ef4444" }}>{value}</span>
-          )}
-        />
-        <Area
-          type="monotone"
-          dataKey="income"
-          stackId="1"
-          stroke="#16a34a"
-          strokeWidth={2}
-          fillOpacity={1}
-          fill="url(#incomeGradient)"
-          name={incomeLabel}
-        />
-        <Area
-          type="monotone"
-          dataKey="expense"
-          stackId="1"
-          stroke="#ef4444"
-          strokeWidth={2}
-          fillOpacity={1}
-          fill="url(#expenseGradient)"
-          name={expenseLabel}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
-
-function AnimatedDonutChart({
-  data,
-  innerRadius,
-  outerRadius,
-}: {
-  data: any[];
-  innerRadius: number;
-  outerRadius: number;
-}) {
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          innerRadius={innerRadius}
-          outerRadius={outerRadius}
-          paddingAngle={2}
-          dataKey="value"
-          nameKey="name"
-          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-          labelLine={false}
-        >
-          {data.map((_, i) => (
-            <Cell key={`cell-${i}`} fill={data[i].color} />
-          ))}
-        </Pie>
-        <RechartsTooltip
-          contentStyle={{
-            backgroundColor: "var(--color-popover)",
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius)",
-            boxShadow: "0 10px 40px rgba(0,0,0,0.3)",
-          }}
-          formatter={(value: number) => [money(value), ""]}
-        />
-        <Legend
-          layout="vertical"
-          wrapperStyle={{ paddingTop: 20 }}
-          iconSize={8}
-          iconType="circle"
-        />
-      </PieChart>
-    </ResponsiveContainer>
   );
 }
 
