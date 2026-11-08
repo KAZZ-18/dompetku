@@ -139,87 +139,88 @@
 
 :root {
   --radius: 0.75rem;
-  --background: #ffffff;
-  --foreground: #171717;
-  --card: #f5f5f5;
-  --card-foreground: #171717;
-  --popover: #ffffff;
-  --popover-foreground: #171717;
-  --primary: #16a34a;
-  --primary-foreground: #ffffff;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #171717;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
-  --accent: #f5f5f5;
-  --accent-foreground: #171717;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #16a34a;
-  --income: #16a34a;
-  --expense: #ef4444;
-  --warning: #ca8a04;
-  --ink: #171717;
-  --ink-foreground: #ffffff;
-  --ink-muted: #a3a3a3;
-  --chart-1: #16a34a;
-  --chart-2: #15803d;
-  --chart-3: #ef4444;
-  --chart-4: #ca8a04;
-  --chart-5: #16a34a;
-  --sidebar: #ffffff;
-  --sidebar-muted: #a3a3a3;
-  --sidebar-foreground: #171717;
-  --sidebar-primary: #16a34a;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f5f5f5;
-  --sidebar-accent-foreground: #171717;
-  --sidebar-border: #e5e5e5;
-  --sidebar-ring: #16a34a;
+  --background: #101512;
+  --foreground: #f4f5ef;
+  --card: #171f1a;
+  --card-foreground: #f4f5ef;
+  --popover: #171f1a;
+  --popover-foreground: #f4f5ef;
+  --primary: #b6f36b;
+  --primary-foreground: #101512;
+  --secondary: #202b23;
+  --secondary-foreground: #f4f5ef;
+  --muted: #202b23;
+  --muted-foreground: #929c94;
+  --accent: #202b23;
+  --accent-foreground: #f4f5ef;
+  --destructive: #ff796b;
+  --destructive-foreground: #101512;
+  --border: rgba(255, 255, 255, 0.09);
+  --input: rgba(255, 255, 255, 0.09);
+  --ring: #b6f36b;
+  --income: #55c99a;
+  --expense: #ff796b;
+  --warning: #e8b64f;
+  --ink: #f4f5ef;
+  --ink-foreground: #101512;
+  --ink-muted: #929c94;
+  --chart-1: #55c99a;
+  --chart-2: #b6f36b;
+  --chart-3: #ff796b;
+  --chart-4: #e8b64f;
+  --chart-5: #55c99a;
+  --sidebar: #0b100d;
+  --sidebar-muted: #929c94;
+  --sidebar-foreground: #f4f5ef;
+  --sidebar-primary: #55c99a;
+  --sidebar-primary-foreground: #101512;
+  --sidebar-accent: #171f1a;
+  --sidebar-accent-foreground: #f4f5ef;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-ring: #b6f36b;
 }
 
 .dark {
-  --background: #090909;
-  --foreground: #ffffff;
-  --card: #141414;
-  --card-foreground: #ffffff;
-  --popover: #141414;
-  --popover-foreground: #ffffff;
-  --primary: #16a34a;
-  --primary-foreground: #ffffff;
-  --secondary: #1c1c1c;
-  --secondary-foreground: #ffffff;
-  --muted: #1c1c1c;
-  --muted-foreground: #737373;
-  --accent: #1c1c1c;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #292929;
-  --input: #292929;
-  --ring: #16a34a;
-  --income: #22c55e;
-  --expense: #ef4444;
-  --warning: #eab308;
-  --ink: #ffffff;
-  --ink-foreground: #090909;
-  --ink-muted: #a3a3a3;
-  --chart-1: #22c55e;
-  --chart-2: #16a34a;
-  --chart-3: #ef4444;
-  --chart-4: #eab308;
-  --chart-5: #16a34a;
-  --sidebar: #090909;
-  --sidebar-muted: #737373;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #16a34a;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #141414;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #292929;
-  --sidebar-ring: #16a34a;
+  --radius: 0.75rem;
+  --background: #101512;
+  --foreground: #f4f5ef;
+  --card: #171f1a;
+  --card-foreground: #f4f5ef;
+  --popover: #171f1a;
+  --popover-foreground: #f4f5ef;
+  --primary: #b6f36b;
+  --primary-foreground: #101512;
+  --secondary: #202b23;
+  --secondary-foreground: #f4f5ef;
+  --muted: #202b23;
+  --muted-foreground: #929c94;
+  --accent: #202b23;
+  --accent-foreground: #f4f5ef;
+  --destructive: #ff796b;
+  --destructive-foreground: #101512;
+  --border: rgba(255, 255, 255, 0.09);
+  --input: rgba(255, 255, 255, 0.09);
+  --ring: #b6f36b;
+  --income: #55c99a;
+  --expense: #ff796b;
+  --warning: #e8b64f;
+  --ink: #f4f5ef;
+  --ink-foreground: #101512;
+  --ink-muted: #929c94;
+  --chart-1: #55c99a;
+  --chart-2: #b6f36b;
+  --chart-3: #ff796b;
+  --chart-4: #e8b64f;
+  --chart-5: #55c99a;
+  --sidebar: #0b100d;
+  --sidebar-muted: #929c94;
+  --sidebar-foreground: #f4f5ef;
+  --sidebar-primary: #55c99a;
+  --sidebar-primary-foreground: #101512;
+  --sidebar-accent: #171f1a;
+  --sidebar-accent-foreground: #f4f5ef;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-ring: #b6f36b;
 }
 
 @layer base {
@@ -264,17 +265,12 @@
 }
 
 @layer base {
-  /* No horizontal page scroll. `hidden` would turn html/body into scroll containers and break
-     `position: sticky` (app + landing headers); `clip` avoids that, `hidden` stays as the
-     fallback for browsers without `clip`. */
   html,
   body {
     max-width: 100%;
     overflow-x: hidden;
     overflow-x: clip;
   }
-  /* Smooth in-page/back-to-top scrolling app-wide; route changes and scroll restoration stay
-     instant via `scrollRestorationBehavior` in router.tsx. */
   @media (prefers-reduced-motion: no-preference) {
     html {
       scroll-behavior: smooth;
@@ -341,6 +337,11 @@ html.privacy .num-sensitive {
     radial-gradient(
       60% 50% at 85% 10%,
       color-mix(in oklch, var(--color-accent) 22%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      50% 45% at 10% 30%,
+      color-mix(in oklch, var(--color-primary) 16%, transparent),
       transparent 70%
     ),
     radial-gradient(
