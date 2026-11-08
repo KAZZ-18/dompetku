@@ -1429,7 +1429,7 @@ function Dashboard() {
                 <div className="h-[300px]">
                   <CategoryLineChart
                     data={
-                      d?.categoryTrend?.map((t: unknown) => {
+                      d?.categoryTrend?.rows?.map((t: unknown) => {
                         const item = t as Record<string, unknown> & { month: string };
                         return { ...item, label: shortMonth(item.month, locale) };
                       }) ?? []
